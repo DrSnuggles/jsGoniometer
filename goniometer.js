@@ -10,7 +10,7 @@ var Goniometer = (function () {
   //
   var my = {    // public available settings
   },
-  debug = false, // display console logs?
+  debug = true, // display console logs?
   anaL,         // Analyzer for left channel
   anaR,         // Analyzer for right channel
   ctx,          // 2D context for drawing, just get it once
@@ -82,27 +82,7 @@ var Goniometer = (function () {
     ctx.strokeStyle = 'rgb(0, 96, 0)';
     ctx.beginPath();
 
-    /* first try
-    // try to apply https://dsp.stackexchange.com/questions/1671/calculate-phase-angle-between-two-signals-i-e-digital-phase-meter
-    // data range = 0 ... 255, 128 should be 0. min/max should be -1/+1
-    ctx.moveTo(width/2, height/2); // mid
-    for (var i = 0; i < dataL.length; i++) {
-      var L = (dataL[i] - 128) / 128;
-      var R = (dataR[i] - 128) / 128;
-      var Phase = Math.atan2(L, R); // nicer then atan coz atan(0/0) is not defined
-      var Magnitude = Math.sqrt(L*L+R*R); // (L**2 + R**2) ** (1/2); // Math.pow(Math.pow(L,2)+Math.pow(R,2), 0.5);
-      var Correlation = Phase * Magnitude;
-      if (Math.abs(Magnitude) > 1 || Math.abs(Correlation) > 1) {
-        // crazy values detected
-        log("L:"+ L +" R: "+ R +" Phase: "+ Phase +" Magnitude: "+ Magnitude +" Correlation: "+ Correlation);
-      }
-      // convert polar into
-
-      ctx.lineTo(Magnitude, Correlation);
-    }
-    */
-
-    // second try : https://www.kvraudio.com/forum/viewtopic.php?t=477945
+    // https://www.kvraudio.com/forum/viewtopic.php?t=477945
     for (var i = 0; i < dataL[i]; i++) {
       var x = (dataR[i] - 128) / 128; // Right channel is mapped to x axis
       var y = (dataL[i] - 128) / 128; // Left channel is mapped to y axis
