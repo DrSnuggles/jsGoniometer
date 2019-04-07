@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>jsGoniometer by DrSnuggles</title>
+  <script src="com/wothke/scriptprocessor_player.min.js"></script>
+  <script src="com/wothke/backend_ayumi.js"></script>
+  <script src="goniometer.js"></script>
+  <style>
+    #vectorcanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <button onclick="start()">Start</button> &nbsp; <button onclick="stop()">Stop</button><br/>
+  <select id="fftSize" onchange="change_fftSize();">
+    <option value="32">32</option>
+    <option value="64">64</option>
+    <option value="128">128</option>
+    <option value="256">256</option>
+    <option value="512">512</option>
+    <option value="1024">1024</option>
+    <option value="2048" selected>2048</option>
+    <option value="4096">4096</option>
+    <option value="8192">8192</option>
+    <option value="16384">16384</option>
+    <option value="32768">32768</option>
+  </select>
+
+  <canvas id="vectorcanvas"></canvas>
+
+  <script>
+    // start music, doesn't matter if enableSpectrum is true or false
+    ScriptNodePlayer.createInstance(new AyumiBackendAdapter(), "", [], false, function(){}, function(){}, function(){ScriptNodePlayer.getInstance().loadMusicDataFromCache("audio/01_scalesmannmisfire.fym", {}, function(){});}); // backendAdapter, basePath, requiredFiles, enableSpectrum, onPlayerReady, onTrackReadyToPlay, onTrackEnd, doOnUpdate, externalTicker
+    ScriptNodePlayer.getInstance().loadMusicFromURL("audio/01_scalesmannmisfire.fym", {}, function(){}, function(){}, function(){}); // url, options, onCompletion, onFail, onProgress
+
+    function start() {
+      Goniometer.start(ScriptNodePlayer.getInstance()._gainNode, vectorcanvas);
+    }
+
+    function stop() {
+      Goniometer.stop();
+    }
+
+    function change_fftSize() {
+      // ToDo
+    }
+  </script>
+
+</body>
+</html>

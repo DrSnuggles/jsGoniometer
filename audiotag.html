@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>jsGoniometer by DrSnuggles</title>
+  <script src="goniometer.js"></script>
+  <style>
+    #vectorcanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <audio controls id="audiotag">
+    <source src="audio/WulleWulle.mp3"/>
+  </audio>
+  <br/>
+  <button onclick="letsGo()">Start</button>
+  <canvas id="vectorcanvas"></canvas>
+
+  <script>
+    function letsGo(){
+      var AudioContext = window.AudioContext || window.webkitAudioContext;
+      var audioCtx = new AudioContext();
+      var source = audioCtx.createMediaElementSource(audiotag);
+      source.connect(audioCtx.destination);
+      audiotag.play();
+      Goniometer.start(source, vectorcanvas);
+    };
+  </script>
+
+</body>
+</html>
