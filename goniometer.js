@@ -41,14 +41,6 @@ var Goniometer = (function () {
   };
   function renderLoop() {
     drawGoniometer();
-    //drawScope();
-    /*
-    drawVU(0, 100/15*my.ym.player.voiceA.getvolume());
-    drawVU(1, 100/15*my.ym.player.voiceB.getvolume());
-    drawVU(2, 100/15*my.ym.player.voiceC.getvolume());
-    drawScope(0, my.ym.anal);
-    drawSpectrum(0, my.ym.anal);
-    */
     raf = requestAnimationFrame(renderLoop);
   };
   function drawGoniometerBackground() {
@@ -77,6 +69,12 @@ var Goniometer = (function () {
     var dataR = new Uint8Array(anaR.frequencyBinCount);
     anaL.getByteTimeDomainData(dataL);
     anaR.getByteTimeDomainData(dataR);
+    /*
+    var dataL = new Float32Array(anaL.frequencyBinCount);
+    var dataR = new Float32Array(anaR.frequencyBinCount);
+    anaL.getFloatTimeDomainData(dataL);
+    anaR.getFloatTimeDomainData(dataR);
+    */
 
     ctx.lineWidth = 1;
     ctx.strokeStyle = 'rgb(0, 96, 0)';
@@ -86,7 +84,6 @@ var Goniometer = (function () {
     for (var i = 0; i < dataL[i]; i++) {
       var x = (dataR[i] - 128) / 128; // Right channel is mapped to x axis
       var y = (dataL[i] - 128) / 128; // Left channel is mapped to y axis
-
       // Convert cartesian to polar coordinate
       // @see https://www.mathsisfun.com/polar-cartesian-coordinates.html
       var radius = Math.sqrt((x * x) + (y * y));
@@ -110,11 +107,10 @@ var Goniometer = (function () {
       }
 
       // Rotate coordinate by 45 degrees counter clockwise
-      angle += 0.78539816;
-
+      angle -= 0.78539816;
       // Convert polar coordinate back to cartesian coordinate.
-      var xRotated = radius * Math.cos(angle);
-      var yRotated = radius * Math.sin(angle);
+      var xRotated = radius * Math.sin(angle);
+      var yRotated = radius * Math.cos(angle);
       //log("xRotated: "+ xRotated +" yRotated"+ yRotated);
       var drawX = xRotated * width + width/2;
       var drawY = yRotated * height + height/2;
@@ -136,7 +132,8 @@ var Goniometer = (function () {
       splitChannels(source);
       ctx = canvas.getContext('2d');
       //anaL.fftSize = anaR.fftSize = 2048;
-      width = canvas.width = anaL.frequencyBinCount; // both are equal
+      // width = canvas.width ... both are equal
+      width = canvas.width = 256;//anaL.frequencyBinCount;
       height = canvas.height = 256;
       if (debug) {
         my.anaL = anaL;
