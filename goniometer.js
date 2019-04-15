@@ -65,25 +65,33 @@ var Goniometer = (function () {
     //log("drawGoniometer");
     drawGoniometerBackground();
 
-    var dataL = new Uint8Array(anaL.frequencyBinCount);
-    var dataR = new Uint8Array(anaR.frequencyBinCount);
-    anaL.getByteTimeDomainData(dataL);
-    anaR.getByteTimeDomainData(dataR);
-    /*
-    var dataL = new Float32Array(anaL.frequencyBinCount);
-    var dataR = new Float32Array(anaR.frequencyBinCount);
-    anaL.getFloatTimeDomainData(dataL);
-    anaR.getFloatTimeDomainData(dataR);
-    */
+    var float = true;
+    if (float) {
+      var dataL = new Float32Array(anaL.frequencyBinCount);
+      var dataR = new Float32Array(anaR.frequencyBinCount);
+      anaL.getFloatTimeDomainData(dataL);
+      anaR.getFloatTimeDomainData(dataR);
+    } else {
+      var dataL = new Uint8Array(anaL.frequencyBinCount);
+      var dataR = new Uint8Array(anaR.frequencyBinCount);
+      anaL.getByteTimeDomainData(dataL);
+      anaR.getByteTimeDomainData(dataR);
+    }
 
     ctx.lineWidth = 1;
     ctx.strokeStyle = 'rgb(0, 96, 0)';
     ctx.beginPath();
 
     // https://www.kvraudio.com/forum/viewtopic.php?t=477945
-    for (var i = 0; i < dataL[i]; i++) {
-      var x = (dataR[i] - 128) / 128; // Right channel is mapped to x axis
-      var y = (dataL[i] - 128) / 128; // Left channel is mapped to y axis
+    for (var i = 0; i < dataL.length; i++) {
+      var x = dataR[i]; // Right channel is mapped to x axis
+      var y = dataL[i]; // Left channel is mapped to y axis
+      if (!float) {
+        // for 0...255 based Uint8
+        // convert to -1...+1
+        x = (x - 128) / 128;
+        y = (y - 128) / 128;
+      }
       // Convert cartesian to polar coordinate
       // @see https://www.mathsisfun.com/polar-cartesian-coordinates.html
       var radius = Math.sqrt((x * x) + (y * y));
@@ -115,6 +123,7 @@ var Goniometer = (function () {
       var drawX = xRotated * width + width/2;
       var drawY = yRotated * height + height/2;
       ctx.lineTo(drawX, drawY);
+//if (i===0) console.log(drawX,drawY);
       //ctx.fillRect(drawX, drawY, 1, 1);
     }
 
@@ -129,12 +138,14 @@ var Goniometer = (function () {
     log(source);
     if (raf === undefined) {
       // split audio context into left and right channel
+      // ToDo: what about mono sources, actually they are display as left only !!
       splitChannels(source);
       ctx = canvas.getContext('2d');
       //anaL.fftSize = anaR.fftSize = 2048;
       // width = canvas.width ... both are equal
       width = canvas.width = 256;//anaL.frequencyBinCount;
       height = canvas.height = 256;
+      canvas.imageSmoothingEnabled = false;
       if (debug) {
         my.anaL = anaL;
         my.anaR = anaR;
