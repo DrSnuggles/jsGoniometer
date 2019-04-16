@@ -9,8 +9,8 @@ var Goniometer = (function () {
   // Init
   //
   var my = {    // public available settings
-    delayDisplay : 0.05, // fadeOut imitate CRT 0.00...1.00  ... 1 = disabled/full clear   0 = no clear   0.01...0.05 old CRTs
-    bgColor : [255, 255, 255, 1], // background color std. white HTML, , 4th value is ignored and used by fade
+    // use bgColor[3] to imitate CRT
+    bgColor : [255, 255, 255, 0.05], // background color std. white HTML, , 4th value is ignored and used by fade
     bgLines : [96, 0, 0, 0.5], // color rgba for all meter lines
     scopeColor : [0, 96, 0, 1], // color rgba
   },
@@ -51,7 +51,7 @@ var Goniometer = (function () {
   };
   function drawGoniometerBackground() {
     // clear old
-    ctx.fillStyle = 'rgba('+my.bgColor[0]+', '+my.bgColor[1]+', '+my.bgColor[2]+', '+my.delayDisplay+')';
+    ctx.fillStyle = 'rgba('+my.bgColor[0]+', '+my.bgColor[1]+', '+my.bgColor[2]+', '+my.bgColor[3]+')';
     ctx.fillRect(0, 0, width, height);
 
     ctx.lineWidth = 1;

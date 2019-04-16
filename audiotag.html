@@ -30,7 +30,7 @@
       source.connect(audioCtx.destination); // route source to destination
       audiotag.play(); // play audio
       // set colors (all rgba)
-      Goniometer.bgColor = [20, 40, 20, 1]; // rgba values
+      Goniometer.bgColor = [20, 40, 20, 0.05]; // rgba values !! use opacity to imitate CRT !!
       Goniometer.bgLines = [0, 60, 0, 0.5]; // rgba values
       Goniometer.scopeColor = [150, 255, 150, 1]; // rgba values
       Goniometer.start(source, vectorcanvas); // start the goniometer
