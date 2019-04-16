@@ -7,7 +7,7 @@ I started this because i remembered the old Amiga DeliTracker visualisation whic
 
 ### Terminus
 Start with a picture to reference the single elements
-<img align="left" width="800" src="Goniometer_RTW.jpg">
+<img align="center" width="800" src="Goniometer_RTW.jpg">
 
 I found a lot of names for the display i'm talking about (picture mid):
 - Goniometer
