@@ -13,6 +13,7 @@ var Goniometer = (function () {
   debug = true, // display console logs?
   anaL,         // Analyzer for left channel
   anaR,         // Analyzer for right channel
+  canvas,       // canvas for resizing
   ctx,          // 2D context for drawing, just get it once
   width,        // width of canvas = calced pixels
   height,       // height of canvas = calced pixels
@@ -39,11 +40,11 @@ var Goniometer = (function () {
     left.connect(anaL);
     right.connect(anaR);
   };
-  function renderLoop(canvas) {
+  function renderLoop() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
     drawGoniometer();
-    raf = requestAnimationFrame(function(){renderLoop(canvas)});
+    raf = requestAnimationFrame(renderLoop);
   };
   function drawGoniometerBackground() {
     // clear old
@@ -67,33 +68,23 @@ var Goniometer = (function () {
     //log("drawGoniometer");
     drawGoniometerBackground();
 
-    var float = true;
-    if (float) {
-      var dataL = new Float32Array(anaL.frequencyBinCount);
-      var dataR = new Float32Array(anaR.frequencyBinCount);
-      anaL.getFloatTimeDomainData(dataL);
-      anaR.getFloatTimeDomainData(dataR);
-    } else {
-      var dataL = new Uint8Array(anaL.frequencyBinCount);
-      var dataR = new Uint8Array(anaR.frequencyBinCount);
-      anaL.getByteTimeDomainData(dataL);
-      anaR.getByteTimeDomainData(dataR);
-    }
+    var dataL = new Float32Array(anaL.frequencyBinCount);
+    var dataR = new Float32Array(anaR.frequencyBinCount);
+    anaL.getFloatTimeDomainData(dataL);
+    anaR.getFloatTimeDomainData(dataR);
 
     ctx.lineWidth = 1;
     ctx.strokeStyle = 'rgb(0, 96, 0)';
     ctx.beginPath();
 
+    // ToDo: move to startpoint, draw line from there
+    // split some calcs into functions
+
     // https://www.kvraudio.com/forum/viewtopic.php?t=477945
     for (var i = 0; i < dataL.length; i++) {
       var x = dataR[i]; // Right channel is mapped to x axis
       var y = dataL[i]; // Left channel is mapped to y axis
-      if (!float) {
-        // for 0...255 based Uint8
-        // convert to -1...+1
-        x = (x - 128) / 128;
-        y = (y - 128) / 128;
-      }
+
       // Convert cartesian to polar coordinate
       // @see https://www.mathsisfun.com/polar-cartesian-coordinates.html
       var radius = Math.sqrt((x * x) + (y * y));
@@ -135,27 +126,32 @@ var Goniometer = (function () {
   //
   // Public
   //
-  my.start = function(source, canvas) {
+  my.start = function(source, drawcanvas) {
     log("Goniometer.start");
     log(source);
     if (raf === undefined) {
       // split audio context into left and right channel
       // ToDo: what about mono sources, actually they are displayed as left only !!
       splitChannels(source);
+      canvas = drawcanvas;
       ctx = canvas.getContext('2d');
       //anaL.fftSize = anaR.fftSize = 2048;
       // width = canvas.width ... both are equal
+      /* now in loop
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
+      */
       canvas.imageSmoothingEnabled = false;
       if (debug) {
         my.anaL = anaL;
         my.anaR = anaR;
+        my.canvas = canvas;
         my.ctx = ctx;
         my.width = width;
         my.height = height;
       }
-      raf = requestAnimationFrame(function (){renderLoop(canvas)});
+      // maybe attach event on canvas for resizing, nicer than in loop
+      raf = requestAnimationFrame(renderLoop);
       log("Goniometer started");
     } else {
       log("Goniometer already running");
