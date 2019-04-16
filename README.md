@@ -15,7 +15,7 @@ I found a lot of names for the display i'm talking about (picture mid):
 - Audio vector oscilloscope
 - Jellyfish display (new name for surround signals)
 
-These display type is often combined with:
+This display type is often combined with:
 - CorrelationMeter/PhaseMeter (picture bottom)
 - LevelMeter/VU/PPM meter (picture right)
 
