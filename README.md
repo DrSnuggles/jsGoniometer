@@ -7,7 +7,7 @@ I started this because i remembered the old Amiga DeliTracker visualisation whic
 
 ### Terminus
 Start with a picture to reference the single elements
-<img align="left" width="200" src="https://commons.wikimedia.org/wiki/File:Goniometer_RTW.jpg#/media/File:Goniometer_RTW.jpg">
+<img align="left" width="800" src="Goniometer_RTW.jpg">
 
 I found a lot of names for the display i'm talking about (picture mid):
 - Goniometer
@@ -25,10 +25,10 @@ I will start with plain goniometer, because there are already several other vu/s
 ## Features/ToDo
 ### Features
 - GonioMeter
-### ToDo
 - draw background L/R line
 - draw background circles
 - fully configurable (background, colors, ...)
+### ToDo
 - CorrelationMeter
 - VU/PPM with different scales
 - Surround

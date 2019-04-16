@@ -9,6 +9,10 @@ var Goniometer = (function () {
   // Init
   //
   var my = {    // public available settings
+    delayDisplay : 0.05, // fadeOut imitate CRT 0.00...1.00  ... 1 = disabled/full clear   0 = no clear   0.01...0.05 old CRTs
+    bgColor : [255, 255, 255, 1], // background color std. white HTML, , 4th value is ignored and used by fade
+    bgLines : [96, 0, 0, 0.5], // color rgba for all meter lines
+    scopeColor : [0, 96, 0, 1], // color rgba
   },
   debug = true, // display console logs?
   anaL,         // Analyzer for left channel
@@ -41,17 +45,17 @@ var Goniometer = (function () {
     right.connect(anaR);
   };
   function renderLoop() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
+    drawGoniometerBackground();
     drawGoniometer();
     raf = requestAnimationFrame(renderLoop);
   };
   function drawGoniometerBackground() {
     // clear old
-    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba('+my.bgColor[0]+', '+my.bgColor[1]+', '+my.bgColor[2]+', '+my.delayDisplay+')';
+    ctx.fillRect(0, 0, width, height);
 
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgb(96, 0, 0)';
+    ctx.strokeStyle = 'rgba('+my.bgLines[0]+', '+my.bgLines[1]+', '+my.bgLines[2]+', '+my.bgLines[3]+')';
     ctx.beginPath();
 
     // x - axis
@@ -62,72 +66,91 @@ var Goniometer = (function () {
     ctx.moveTo(width/2, 0);
     ctx.lineTo(width/2, height);
 
-    ctx.stroke();
+    // l - axis
+    ctx.moveTo(0, 0);
+    ctx.lineTo(width, height);
+
+    // r - axis
+    ctx.moveTo(width, 0);
+    ctx.lineTo(0, height);
+
+    // circles
+    var maxradius = height/2;
+
+    // circle 50%
+    ctx.moveTo(width/2 + maxradius/2, height/2);
+    ctx.arc(width/2, height/2, maxradius/2, 0, 2*Math.PI);
+
+    // circle 75%
+    ctx.moveTo(width/2 + maxradius/(4/3), height/2);
+    ctx.arc(width/2, height/2, maxradius/(4/3), 0, 2*Math.PI);
+
+    // circle 100%
+    ctx.moveTo(width/2 + maxradius, height/2);
+    ctx.arc(width/2, height/2, maxradius, 0, 2*Math.PI);
+
+    ctx.stroke(); // finally draw
+
   };
   function drawGoniometer() {
     //log("drawGoniometer");
-    drawGoniometerBackground();
-
     var dataL = new Float32Array(anaL.frequencyBinCount);
     var dataR = new Float32Array(anaR.frequencyBinCount);
     anaL.getFloatTimeDomainData(dataL);
     anaR.getFloatTimeDomainData(dataR);
 
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgb(0, 96, 0)';
+    ctx.strokeStyle = 'rgba('+my.scopeColor[0]+', '+my.scopeColor[1]+', '+my.scopeColor[2]+', '+my.scopeColor[3]+')';
     ctx.beginPath();
 
-    // ToDo: move to startpoint, draw line from there
-    // split some calcs into functions
+    var rotated;
 
-    // https://www.kvraudio.com/forum/viewtopic.php?t=477945
-    for (var i = 0; i < dataL.length; i++) {
-      var x = dataR[i]; // Right channel is mapped to x axis
-      var y = dataL[i]; // Left channel is mapped to y axis
+    // move to start point
+    rotated = rotate45deg(dataR[0], dataL[0]);  // Right channel is mapped to x axis
+    ctx.moveTo(rotated.x * width + width/2, rotated.y* height + height/2);
 
-      // Convert cartesian to polar coordinate
-      // @see https://www.mathsisfun.com/polar-cartesian-coordinates.html
-      var radius = Math.sqrt((x * x) + (y * y));
-      var angle = Math.atan(y/x);
-
-      // atan() returns wrong value if either value is negative.
-      // Correct for this by rotating 180 or 360 degrees depending on which
-      // quadrant of the x/y graph the cartesian coordinate is in.
-      if ((x < 0 && y > 0) || (x < 0 && y < 0)) {
-        angle += 3.14159265; // Pi radians = 180 degrees
-      } else if (x > 0 && y < 0) {
-        angle += 6.28318530; // 2Pi radians = 360 degrees
-      }
-
-      // atan() will return zero if either of our coordinates is zero.
-      // Correct for this by manually setting the angle.
-      if (x == 0) {
-        angle = y > 0 ? 1.57079633 : 4.71238898; // 90 or 270 degrees
-      } else if (y == 0) {
-        angle = x > 0 ? 0 : 3.14159265; // 0 or 180 degrees
-      }
-
-      // Rotate coordinate by 45 degrees counter clockwise
-      angle -= 0.78539816;
-      // Convert polar coordinate back to cartesian coordinate.
-      var xRotated = radius * Math.sin(angle);
-      var yRotated = radius * Math.cos(angle);
-      //log("xRotated: "+ xRotated +" yRotated"+ yRotated);
-      var drawX = xRotated * width + width/2;
-      var drawY = yRotated * height + height/2;
-      ctx.lineTo(drawX, drawY);
-//if (i===0) console.log(drawX,drawY);
-      //ctx.fillRect(drawX, drawY, 1, 1);
+    // draw line
+    for (var i = 1; i < dataL.length; i++) {
+      rotated = rotate45deg(dataR[i], dataL[i]);
+      ctx.lineTo(rotated.x * width + width/2, rotated.y* height + height/2);
     }
 
     ctx.stroke();
   };
+  function rotate45deg(x, y) {
+    var tmp = cartesian2polar(x, y);
+    tmp.angle -= 0.78539816; // Rotate coordinate by 45 degrees
+    var tmp2 = polar2cartesian(tmp.radius, tmp.angle);
+    return {x:tmp2.x, y:tmp2.y};
+  }
+  function cartesian2polar(x, y) {
+    // Convert cartesian to polar coordinate
+    var radius = Math.sqrt((x * x) + (y * y));
+    var angle = Math.atan2(y,x); // atan2 gives full circle
+    return {radius:radius, angle:angle};
+  };
+  function polar2cartesian(radius, angle) {
+    // Convert polar coordinate to cartesian coordinate
+    var x = radius * Math.sin(angle);
+    var y = radius * Math.cos(angle);
+    return {x:x, y:y};
+  };
+  function resizer() {
+    log("resizer");
+    // check if our canvas was risized
+    if ((width !== canvas.clientWidth) || (height !== canvas.clientHeight)) {
+      width = canvas.width = canvas.clientWidth;
+      height = canvas.height = canvas.clientHeight;
+      log("canvas resized");
+    }
+  }
 
   //
   // Public
   //
   my.start = function(source, drawcanvas) {
     log("Goniometer.start");
+    // analyze source if it is tag or GainNode
     log(source);
     if (raf === undefined) {
       // split audio context into left and right channel
@@ -135,13 +158,11 @@ var Goniometer = (function () {
       splitChannels(source);
       canvas = drawcanvas;
       ctx = canvas.getContext('2d');
-      //anaL.fftSize = anaR.fftSize = 2048;
-      // width = canvas.width ... both are equal
-      /* now in loop
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-      */
-      canvas.imageSmoothingEnabled = false;
+      resizer();
+      // resizing, nicer than in loop, coz resize canvas clears it -> no nice fadeout possible
+      addEventListener('resize', resizer);
+      canvas.imageSmoothingEnabled = false; // faster
+
       if (debug) {
         my.anaL = anaL;
         my.anaR = anaR;
@@ -150,7 +171,7 @@ var Goniometer = (function () {
         my.width = width;
         my.height = height;
       }
-      // maybe attach event on canvas for resizing, nicer than in loop
+
       raf = requestAnimationFrame(renderLoop);
       log("Goniometer started");
     } else {
@@ -162,10 +183,15 @@ var Goniometer = (function () {
     if (raf !== undefined) {
       cancelAnimationFrame(raf);
       raf = undefined;
+      removeEventListener('resize', resizer);
       log("Goniometer stopped");
     } else {
       log("Goniometer already stopped");
     }
+  };
+  my.setFFTsize = function(newSize) {
+    anaL.fftSize = anaR.fftSize = newSize;
+    log("Goniometer FFT size set to: "+ newSize);
   };
 
   //

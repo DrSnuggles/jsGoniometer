@@ -7,10 +7,10 @@
   <style>
     #vectorcanvas {
       position: absolute;
-      top: 0;
+      top: 10vh;
       left: 0;
       width: 100vw;
-      height: 100vh;
+      height: 90vh;
       pointer-events: none;
     }
   </style>
@@ -19,7 +19,6 @@
   <audio controls id="audiotag">
     <source src="audio/WulleWulle.mp3"/>
   </audio>
-  <br/>
   <button onclick="letsGo()">Start</button>
   <canvas id="vectorcanvas"></canvas>
 
@@ -27,10 +26,14 @@
     function letsGo(){
       var AudioContext = window.AudioContext || window.webkitAudioContext;
       var audioCtx = new AudioContext();
-      var source = audioCtx.createMediaElementSource(audiotag);
-      source.connect(audioCtx.destination);
-      audiotag.play();
-      Goniometer.start(source, vectorcanvas);
+      var source = audioCtx.createMediaElementSource(audiotag); // create source from audio tag
+      source.connect(audioCtx.destination); // route source to destination
+      audiotag.play(); // play audio
+      // set colors (all rgba)
+      Goniometer.bgColor = [20, 40, 20, 1]; // rgba values
+      Goniometer.bgLines = [0, 60, 0, 0.5]; // rgba values
+      Goniometer.scopeColor = [150, 255, 150, 1]; // rgba values
+      Goniometer.start(source, vectorcanvas); // start the goniometer
     };
   </script>
 
