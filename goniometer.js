@@ -39,9 +39,11 @@ var Goniometer = (function () {
     left.connect(anaL);
     right.connect(anaR);
   };
-  function renderLoop() {
+  function renderLoop(canvas) {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
     drawGoniometer();
-    raf = requestAnimationFrame(renderLoop);
+    raf = requestAnimationFrame(function(){renderLoop(canvas)});
   };
   function drawGoniometerBackground() {
     // clear old
@@ -138,13 +140,13 @@ var Goniometer = (function () {
     log(source);
     if (raf === undefined) {
       // split audio context into left and right channel
-      // ToDo: what about mono sources, actually they are display as left only !!
+      // ToDo: what about mono sources, actually they are displayed as left only !!
       splitChannels(source);
       ctx = canvas.getContext('2d');
       //anaL.fftSize = anaR.fftSize = 2048;
       // width = canvas.width ... both are equal
-      width = canvas.width = 256;//anaL.frequencyBinCount;
-      height = canvas.height = 256;
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
       canvas.imageSmoothingEnabled = false;
       if (debug) {
         my.anaL = anaL;
@@ -153,7 +155,7 @@ var Goniometer = (function () {
         my.width = width;
         my.height = height;
       }
-      raf = requestAnimationFrame(renderLoop);
+      raf = requestAnimationFrame(function (){renderLoop(canvas)});
       log("Goniometer started");
     } else {
       log("Goniometer already running");
