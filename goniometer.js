@@ -93,8 +93,12 @@ var Goniometer = (function () {
   function clearGoniometer() {
     //log("clearGoniometer");
     // clear/fade out old
-    ctx.fillStyle = 'rgba('+my.bgColor[0]+', '+my.bgColor[1]+', '+my.bgColor[2]+', '+my.bgColor[3]+')';
-    ctx.fillRect(0, 0, width, height);
+    if (my.bgColor.length > 0) {
+      ctx.fillStyle = 'rgba('+my.bgColor[0]+', '+my.bgColor[1]+', '+my.bgColor[2]+', '+my.bgColor[3]+')';
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      ctx.clearRect(0, 0, width, height); // maybe useful for transparent mode
+    }
   };
   function drawBGlines() {
     //log("drawBGlines");
