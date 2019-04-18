@@ -1,5 +1,5 @@
-/*  Goniometer/Phasemeter/VectorScope by DrSnuggles
-    License :
+/*  Goniometer / VectorScope by DrSnuggles
+    License : WTFPL 2.0, Beerware Revision 42
  */
 
 "use strict";
@@ -10,7 +10,7 @@ var Goniometer = (function () {
   //
   var my = {    // public available settings
     // use bgColor[3] to imitate CRT
-    bgColor : [255, 255, 255, 0.05], // background color std. white HTML, , 4th value is ignored and used by fade
+    bgColor : [255, 255, 255, 1], // background color std. white HTML, 4th value is used by fade to imitate CRT, but i don't like
     bgLines : [96, 0, 0, 0.5], // color rgba for all meter lines
     scopeColor : [0, 96, 0, 1], // color rgba
   },
@@ -215,6 +215,7 @@ var Goniometer = (function () {
       cancelAnimationFrame(raf);
       raf = undefined;
       removeEventListener('resize', resizer);
+      ctx.clearRect(0, 0, width, height);
       log("Goniometer stopped");
     } else {
       log("Goniometer already stopped");
