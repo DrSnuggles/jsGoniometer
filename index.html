@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <title>jsGoniometer by DrSnuggles</title>
-  <script src="com/wothke/scriptprocessor_player.min.js"></script>
-  <script src="com/wothke/backend_ayumi.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/wothke/webaudio-player/htdocs_example/stdlib/scriptprocessor_player.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/wothke/webAyumi/htdocs/backend_ayumi.js"></script>
   <script src="goniometer.js"></script>
   <style>
     #vectorcanvas {
@@ -33,15 +33,16 @@
     <option value="16384">16384</option>
     <option value="32768">32768</option>
   </select>&nbsp;
-  Opacity <span id="actOpa">0.05</span>: <input type="range" min="0" max="1" value="0.05" step="0.01" onchange="change_opacity(this.value);"/>
+  Opacity <span id="actOpa">1.00</span>: <input type="range" min="0" max="1" value="1.00" step="0.01" onchange="change_opacity(this.value);"/>
 
   <canvas id="vectorcanvas"></canvas>
 
   <script>
     // start music, doesn't matter if enableSpectrum is true or false
     ScriptNodePlayer.createInstance(new AyumiBackendAdapter(), "", [], false, function(){}, function(){}, function(){ScriptNodePlayer.getInstance().loadMusicDataFromCache("audio/01_scalesmannmisfire.fym", {}, function(){});}); // backendAdapter, basePath, requiredFiles, enableSpectrum, onPlayerReady, onTrackReadyToPlay, onTrackEnd, doOnUpdate, externalTicker
-    //ScriptNodePlayer.getInstance().loadMusicFromURL("audio/01_scalesmannmisfire.fym", {}, function(){}, function(){}, function(){}); // url, options, onCompletion, onFail, onProgress
-    ScriptNodePlayer.getInstance().loadMusicFromURL("https://modland.com/pub/modules/YM/Jochen%20Hippel/rings%20of%20medusa%20-%20in-game.ym", {}, function(){}, function(){}, function(){}); // url, options, onCompletion, onFail, onProgress
+    ScriptNodePlayer.getInstance().loadMusicFromURL("audio/01_scalesmannmisfire.fym", {}, function(){}, function(){}, function(){}); // url, options, onCompletion, onFail, onProgress
+    //ScriptNodePlayer.createInstance(new AyumiBackendAdapter(), "", [], false, function(){}, function(){}, function(){ScriptNodePlayer.getInstance().loadMusicDataFromCache("//modland.com/pub/modules/YM/Jochen%20Hippel/rings%20of%20medusa%20-%20in-game.ym", {}, function(){});}); // backendAdapter, basePath, requiredFiles, enableSpectrum, onPlayerReady, onTrackReadyToPlay, onTrackEnd, doOnUpdate, externalTicker
+    //ScriptNodePlayer.getInstance().loadMusicFromURL("//modland.com/pub/modules/YM/Jochen%20Hippel/rings%20of%20medusa%20-%20in-game.ym", {}, function(){}, function(){}, function(){}); // url, options, onCompletion, onFail, onProgress
 
     function start() {
       Goniometer.start(ScriptNodePlayer.getInstance()._gainNode, vectorcanvas);
@@ -56,7 +57,7 @@
     }
 
     function change_opacity(newOpa) {
-      Goniometer.bgColor = [Goniometer.bgColor[0], Goniometer.bgColor[1], Goniometer.bgColor[2], newOpa];
+      Goniometer.bgLineColor = [Goniometer.bgLineColor[0], Goniometer.bgLineColor[1], Goniometer.bgLineColor[2], newOpa];
       actOpa.innerText = (newOpa*1).toFixed(2);
     }
   </script>

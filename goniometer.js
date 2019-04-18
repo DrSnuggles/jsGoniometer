@@ -9,9 +9,11 @@ var Goniometer = (function () {
   // Init
   //
   var my = {    // public available settings
+    // Left,Right,Mono,Phase,Circle100%,Circle75%,Circle50%
+    bgLines : ['L','R','M','P','C100','C75','C50'],
     // use bgColor[3] to imitate CRT
     bgColor : [255, 255, 255, 1], // background color std. white HTML, 4th value is used by fade to imitate CRT, but i don't like
-    bgLines : [96, 0, 0, 0.5], // color rgba for all meter lines
+    bgLineColor : [96, 0, 0, 0.5], // color rgba for all meter lines
     scopeColor : [0, 96, 0, 1], // color rgba
   },
   debug = true, // display console logs?
@@ -81,52 +83,69 @@ var Goniometer = (function () {
     */
   };
   function renderLoop() {
-    drawGoniometerBackground();
+    clearGoniometer();
+    if (my.bgLines.length > 0) {
+      drawBGlines();
+    }
     drawGoniometer();
     raf = requestAnimationFrame(renderLoop);
   };
-  function drawGoniometerBackground() {
-    // clear old
+  function clearGoniometer() {
+    //log("clearGoniometer");
+    // clear/fade out old
     ctx.fillStyle = 'rgba('+my.bgColor[0]+', '+my.bgColor[1]+', '+my.bgColor[2]+', '+my.bgColor[3]+')';
     ctx.fillRect(0, 0, width, height);
-
+  };
+  function drawBGlines() {
+    //log("drawBGlines");
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba('+my.bgLines[0]+', '+my.bgLines[1]+', '+my.bgLines[2]+', '+my.bgLines[3]+')';
+    ctx.strokeStyle = 'rgba('+my.bgLineColor[0]+', '+my.bgLineColor[1]+', '+my.bgLineColor[2]+', '+my.bgLineColor[3]+')';
     ctx.beginPath();
 
-    // x - axis
-    ctx.moveTo(0, height/2);
-    ctx.lineTo(width, height/2);
+    if (my.bgLines.indexOf("P") !== -1) {
+      // x - axis
+      ctx.moveTo(0, height/2);
+      ctx.lineTo(width, height/2);
+    }
 
-    // y - axis
-    ctx.moveTo(width/2, 0);
-    ctx.lineTo(width/2, height);
+    if (my.bgLines.indexOf("M") !== -1) {
+      // y - axis
+      ctx.moveTo(width/2, 0);
+      ctx.lineTo(width/2, height);
+    }
 
-    // l - axis
-    ctx.moveTo(0, 0);
-    ctx.lineTo(width, height);
+    if (my.bgLines.indexOf("L") !== -1) {
+      // l - axis
+      ctx.moveTo(0, 0);
+      ctx.lineTo(width, height);
+    }
 
-    // r - axis
-    ctx.moveTo(width, 0);
-    ctx.lineTo(0, height);
+    if (my.bgLines.indexOf("R") !== -1) {
+      // r - axis
+      ctx.moveTo(width, 0);
+      ctx.lineTo(0, height);
+    }
 
-    // circles
-    var maxradius = height/2;
+    // circles/ellipses
+    if (my.bgLines.indexOf("C50") !== -1) {
+      // 50%
+      ctx.moveTo(width/2 + width/2 /2, height/2);
+      ctx.ellipse(width/2, height/2, width/2 /2, height/2 /2, 0, 0, 2*Math.PI);
+    }
 
-    // circle 50%
-    ctx.moveTo(width/2 + maxradius/2, height/2);
-    ctx.arc(width/2, height/2, maxradius/2, 0, 2*Math.PI);
+    if (my.bgLines.indexOf("C75") !== -1) {
+      // 75%
+      ctx.moveTo(width/2 + width/2 /(4/3), height/2);
+      ctx.ellipse(width/2, height/2, width/2 /(4/3), height/2 /(4/3), 0, 0, 2*Math.PI);
+    }
 
-    // circle 75%
-    ctx.moveTo(width/2 + maxradius/(4/3), height/2);
-    ctx.arc(width/2, height/2, maxradius/(4/3), 0, 2*Math.PI);
-
-    // circle 100%
-    ctx.moveTo(width/2 + maxradius, height/2);
-    ctx.arc(width/2, height/2, maxradius, 0, 2*Math.PI);
+    if (my.bgLines.indexOf("C100") !== -1) {
+      // 100%
+      ctx.moveTo(width/2 + width/2, height/2);
+      ctx.ellipse(width/2, height/2, width/2, height/2, 0, 0, 2*Math.PI);
+    }
 
     ctx.stroke(); // finally draw
-
   };
   function drawGoniometer() {
     //log("drawGoniometer");
