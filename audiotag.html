@@ -5,7 +5,7 @@
   <title>jsGoniometer by DrSnuggles</title>
   <script src="goniometer.js"></script>
   <style>
-    #vectorcanvas {
+    #myCanvas {
       position: absolute;
       top: 10vh;
       left: 0;
@@ -16,24 +16,21 @@
   </style>
 </head>
 <body>
-  <audio controls id="audiotag">
+  <audio controls id="myAudio">
     <source src="audio/WulleWulle.mp3"/>
   </audio>
   <button onclick="letsGo()">Start</button>
-  <canvas id="vectorcanvas"></canvas>
+
+  <canvas id="myCanvas"></canvas>
 
   <script>
     function letsGo(){
-      var AudioContext = window.AudioContext || window.webkitAudioContext;
-      var audioCtx = new AudioContext();
-      var source = audioCtx.createMediaElementSource(audiotag); // create source from audio tag
-      source.connect(audioCtx.destination); // route source to destination
-      audiotag.play(); // play audio
+      myAudio.play(); // play audio, just for convenience
       // set colors (all rgba)
       Goniometer.bgColor = [20, 40, 20, 0.05]; // rgba values !! use opacity to imitate CRT !!
       Goniometer.bgLines = [0, 60, 0, 0.5]; // rgba values
       Goniometer.scopeColor = [150, 255, 150, 1]; // rgba values
-      Goniometer.start(source, vectorcanvas); // start the goniometer
+      Goniometer.start(myAudio, myCanvas); // start the goniometer
     };
   </script>
 

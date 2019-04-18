@@ -31,6 +31,18 @@ var Goniometer = (function () {
   };
   function splitChannels(source) {
     log("splitChannels");
+
+    // analyze source
+    if (source.tagName === "AUDIO") {
+      log("Audio tag found")
+      var audioCtx = new AudioContext();
+      source = audioCtx.createMediaElementSource(source); // creates source from audio tag with at least 2channels
+      source.connect(audioCtx.destination); // route source to destination
+      log("Audio source created and routed");
+    }
+    // now we should have GainNode or MediaElementAudioSourceNode
+    //log(source);
+
     var splitter = source.context.createChannelSplitter(2);
     var left = source.context.createStereoPanner();
     var right = source.context.createStereoPanner();
@@ -43,6 +55,30 @@ var Goniometer = (function () {
     anaR = source.context.createAnalyser();
     left.connect(anaL);
     right.connect(anaR);
+    /*
+    // was intended for 1 channel signals
+    // 1 channel signals they are displayed as left only sources which is not correct
+    // BUT createMediaElementSource creates 2 channels from a 1 channel signal... depends on playback device???
+    switch (source.channelCount) {
+      case 0:
+        log("No audio channels found");
+        break;
+      case 1:
+        log("Mono signal found");
+        left.connect(anaL);
+        right.connect(anaL);
+        break;
+      case 2:
+        log("Stereo signal found");
+        left.connect(anaL);
+        right.connect(anaR);
+        break;
+      default:
+        log("Multichannel with "+ source.channelCount +" signals found");
+        left.connect(anaL);
+        right.connect(anaR);
+    }
+    */
   };
   function renderLoop() {
     drawGoniometerBackground();
@@ -150,19 +186,15 @@ var Goniometer = (function () {
   //
   my.start = function(source, drawcanvas) {
     log("Goniometer.start");
-    // analyze source if it is tag or GainNode
-    log(source);
+
     if (raf === undefined) {
-      // split audio context into left and right channel
-      // ToDo: what about mono sources, actually they are displayed as left only !!
       splitChannels(source);
       canvas = drawcanvas;
       ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false; // faster
       resizer();
       // resizing, nicer than in loop, coz resize canvas clears it -> no nice fadeout possible
       addEventListener('resize', resizer);
-      canvas.imageSmoothingEnabled = false; // faster
-
       if (debug) {
         my.anaL = anaL;
         my.anaR = anaR;
@@ -171,7 +203,6 @@ var Goniometer = (function () {
         my.width = width;
         my.height = height;
       }
-
       raf = requestAnimationFrame(renderLoop);
       log("Goniometer started");
     } else {
