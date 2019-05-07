@@ -307,7 +307,7 @@ var Goniometer = (function () {
           backgroundColor: 0xffffff, // The background color of the rendered area (shown if not transparent).
           clearBeforeRender: true, // This sets if the renderer will clear the canvas or not before the new render pass.
           forceFXAA: true, // Forces FXAA antialiasing to be used over native. FXAA is faster, but may not always look as great. (WebGL only).
-          powerPreference: "", // Parameter passed to webgl context, set to "high-performance" for devices with dual graphics card. (WebGL only).
+          //powerPreference: "", // Parameter passed to webgl context, set to "high-performance" for devices with dual graphics card. (WebGL only).
           sharedTicker: false, // true to use PIXI.Ticker.shared, false to create new ticker.
           sharedLoader: false, // true to use PIXI.Loaders.shared, false to create new Loader.
           resizeTo: canvas, // Element to automatically resize stage to.
