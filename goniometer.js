@@ -16,7 +16,7 @@ var Goniometer = (function () {
     bgLineColor : [96, 0, 0, 0.5], // color rgba for all meter lines
     scopeColor : [0, 96, 0, 1], // color rgba
   },
-  debug = true, // display console logs?
+  debug = false, // display console logs?
   anaL,         // Analyzer for left channel
   anaR,         // Analyzer for right channel
   canvas,       // canvas for resizing
@@ -225,7 +225,23 @@ var Goniometer = (function () {
         my.ctx = ctx;
         my.width = width;
         my.height = height;
+        // mrdoob stats.js
+        var script = document.createElement('script');
+        script.onload = function() {
+          var stats = new Stats();
+          document.body.appendChild(stats.dom);
+          requestAnimationFrame(
+            function loop() {
+              stats.update();
+              requestAnimationFrame(loop);
+            }
+          );
+        };
+        //script.src = '//mrdoob.github.io/stats.js/build/stats.min.js';
+        script.src = '//cdn.jsdelivr.net/gh/mrdoob/stats.js/build/stats.min.js';
+        document.head.appendChild(script);
       }
+
       raf = requestAnimationFrame(renderLoop);
       log("Goniometer started");
     } else {
