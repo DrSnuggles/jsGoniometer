@@ -107,7 +107,7 @@ var Goniometer = (function () {
       // remove old
       while(app.stage.children.length > 0) {
         var child = app.stage.getChildAt(0);
-        app.stage.removeChild(child);
+        child.destroy({children: true});
       }
 
 
