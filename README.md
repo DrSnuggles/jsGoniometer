@@ -59,3 +59,4 @@ The persistence of a CRT display is a desired effect on goniometers because the 
 The goniometer proves useful because it provides very dense information in an analog and surprisingly intuitive form. From the display, one can get a good feel for the audio levels for each channel, the amount of stereo and its compatibility as a mono signal, even to some degree what frequencies are contained in the signal. Experts may even be able to determine the probable arrangement of microphones when the signal was recorded.
 
 For more information see also german wikipedia: https://de.wikipedia.org/wiki/Korrelationsgradmesser
+or https://en.wikipedia.org/wiki/Lissajous_curve

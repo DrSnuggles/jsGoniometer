@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <title>jsGoniometer by DrSnuggles</title>
   <script src="//cdn.jsdelivr.net/gh/wothke/webaudio-player/htdocs_example/stdlib/scriptprocessor_player.min.js"></script>
-  <script src="//cdn.jsdelivr.net/gh/wothke/webAyumi/htdocs/backend_ayumi.js"></script>
+  <!-- <script src="//cdn.jsdelivr.net/gh/wothke/webAyumi/htdocs/backend_ayumi.js"></script> -->
+  <script src="//cdn.jsdelivr.net/gh/wothke/libxmp-4.4.1/emscripten/htdocs/backend_xmp.js"></script>
   <script src="goniometer.js"></script>
   <style>
     #vectorcanvas {
@@ -41,8 +42,10 @@
     (function (){
       var song = "//modland.com/pub/modules/YM/Jochen%20Hippel/rings%20of%20medusa%20-%20in-game.ym";
       song = "audio/01_scalesmannmisfire.fym";
+      song = "audio/alchemy.it";
       // start music, doesn't matter if enableSpectrum is true or false
-      ScriptNodePlayer.createInstance(new AyumiBackendAdapter(), "", [], false, function(){}, function(){}, function(){ScriptNodePlayer.getInstance().loadMusicDataFromCache(song, {}, function(){});}); // backendAdapter, basePath, requiredFiles, enableSpectrum, onPlayerReady, onTrackReadyToPlay, onTrackEnd, doOnUpdate, externalTicker
+      //ScriptNodePlayer.createInstance(new AyumiBackendAdapter(), "", [], false, function(){}, function(){}, function(){ScriptNodePlayer.getInstance().loadMusicDataFromCache(song, {}, function(){});}); // backendAdapter, basePath, requiredFiles, enableSpectrum, onPlayerReady, onTrackReadyToPlay, onTrackEnd, doOnUpdate, externalTicker
+      ScriptNodePlayer.createInstance(new XMPBackendAdapter(), "", [], false, function(){}, function(){}, function(){ScriptNodePlayer.getInstance().loadMusicDataFromCache(song, {}, function(){});}); // backendAdapter, basePath, requiredFiles, enableSpectrum, onPlayerReady, onTrackReadyToPlay, onTrackEnd, doOnUpdate, externalTicker
       ScriptNodePlayer.getInstance().loadMusicFromURL(song, {}, function(){}, function(){}, function(){}); // url, options, onCompletion, onFail, onProgress
       start();
     })();
