@@ -8,17 +8,24 @@ function meter(type) {
   //
   // Init
   //
+  // supported types
+  // gon := Goniometer
+  // cor := Correlation meter
+  // rms := ...
   this.type = type;
   this.bgLines = ['L','R','M','P','C100','C75','C50']; // Left,Right,Mono,Phase,Circle100%,Circle75%,Circle50%
   this.bgColor = [255, 255, 255, 1]; // background color std. white HTML, 4th value is used by fade to imitate CRT, but i don't like// use bgColor[3] to imitate CRT
   this.bgLineColor = [96, 0, 0, 0.5]; // color rgba for all meter lines
-  this.scopeColor = [0, 96, 0, 1]; // color rgba
+  this.color = [0, 96, 0, 1]; // color rgba
   this.ana;      // ATools.ana
   this.canvas = null;       // canvas for resizing
   this.ctx = null,          // 2D context for drawing, just get it once
   this.width = null;        // width of canvas = calced pixels
   this.height = null;       // height of canvas = calced pixels
   this.raf = null;          // ref to RAF, needed to cancel RAF
+  this.corr = null;         // Correlation
+  this.val = {'L':0,'R':0,'C':0,'LS':0,'RS':0}; // value foe example Root Mean Square of each channel if type = rms
+  this.damp = 0.95;    // damping
   this.debug = false; // display console logs?
 
   //
@@ -97,30 +104,102 @@ function meter(type) {
     this.ctx.stroke(); // finally draw
   };
   this.drawMeter = function() {
-    //log("drawGoniometer");
     var dataL = new Float32Array(this.ana.L.frequencyBinCount);
     var dataR = new Float32Array(this.ana.R.frequencyBinCount);
     this.ana.L.getFloatTimeDomainData(dataL);
     this.ana.R.getFloatTimeDomainData(dataR);
 
     this.ctx.lineWidth = 1;
-    this.ctx.strokeStyle = 'rgba('+this.scopeColor[0]+', '+this.scopeColor[1]+', '+this.scopeColor[2]+', '+this.scopeColor[3]+')';
+    this.ctx.strokeStyle = 'rgba('+this.color[0]+', '+this.color[1]+', '+this.color[2]+', '+this.color[3]+')';
+    this.ctx.fillStyle = 'rgba('+this.color[0]+', '+this.color[1]+', '+this.color[2]+', '+this.color[3]+')';
     this.ctx.beginPath();
-
     var rotated;
+    var barwidth = 10;
+    var barheight = 10;
+    var midH = this.width/2;
+    var midV = this.height/2;
+    var val = {
+      L:0,
+      R:0,
+      C:0,
+      LS:0,
+      RS:0
+    };
 
-    // move to start point
-    rotated = this.rotate45deg(dataR[0], dataL[0]);  // Right channel is mapped to x axis
-    this.ctx.moveTo(rotated.x * this.width + this.width/2, rotated.y* this.height + this.height/2);
+    switch (this.type) {
+      case "gon":
+        // move to start point
+        rotated = this.rotate45deg(dataR[0], dataL[0]);  // Right channel is mapped to x axis
+        this.ctx.moveTo(rotated.x * this.width + midH, rotated.y* this.height + this.height/2);
 
-    // draw line
-    for (var i = 1; i < dataL.length; i++) {
-      rotated = this.rotate45deg(dataR[i], dataL[i]);
-      this.ctx.lineTo(rotated.x * this.width + this.width/2, rotated.y* this.height + this.height/2);
+        // draw line
+        for (var i = 1; i < dataL.length; i++) {
+          rotated = this.rotate45deg(dataR[i], dataL[i]);
+          this.ctx.lineTo(rotated.x * this.width + midH, rotated.y* this.height + this.height/2);
+        }
+
+        break;
+      case "cor":
+        // ToDo: orientation
+
+        var corr = 0;
+        // sum up corr
+        for (var i = 0; i < dataL.length; i++) {
+          // ToDo: just sum up L and R here
+          rotated = this.rotate45deg(dataR[i], dataL[i]);
+          rotated = this.rotate45deg(rotated.x, rotated.y);
+          rotated = this.rotate45deg(rotated.x, rotated.y);
+          corr += this.getCorr(rotated.x, rotated.y);
+        }
+        this.corr = (corr / dataL.length + this.corr*this.damp)/2.0;
+
+        // now draw
+        this.ctx.fillRect(this.corr * midH + midH - barwidth/2, 0, barwidth, this.height);
+
+        break;
+      case 'rms':
+        // ToDo: orientation
+
+        for (var i = 0; i < dataL.length; i++) {
+          val.L += dataL[i] * dataL[i];
+          val.R += dataR[i] * dataR[i];
+        }
+        val.L = Math.sqrt(val.L / dataL.length);
+        val.R = Math.sqrt(val.R / dataL.length);
+        this.val.L = Math.max(val.L, this.val.L*this.damp);
+        this.val.R = Math.max(val.R, this.val.R*this.damp);
+
+        // now draw
+        this.ctx.fillRect(0, (1-this.val.L) * this.height, midH, this.height-this.val.L*this.height);
+        this.ctx.fillRect(midH, (1-this.val.R) * this.height, midH, this.height-this.val.R*this.height);
+
+        break;
+      case 'db':
+
+        break;
+      case 'vu':
+        val.L = this.getPeak(dataL) * (Math.E - 1);
+        val.R = this.getPeak(dataR) * (Math.E - 1);
+
+        this.val.L = Math.max(val.L, this.val.L*this.damp);
+        this.val.R = Math.max(val.R, this.val.R*this.damp);
+
+        // now draw
+        this.ctx.fillRect(0, (1-this.val.L) * this.height, midH, this.height-((1-this.val.L)*this.height));
+        this.ctx.fillRect(midH, (1-this.val.R) * this.height, midH, this.height-((1-this.val.R)*this.height));
+
+        break;
+      default:
+
     }
 
     this.ctx.stroke();
   };
+  this.getCorr = function(x, y) {
+    var radius = Math.sqrt((x * x) + (y * y));
+    var angle = Math.atan2(y,x); // atan2 gives full circle
+    return radius * angle;
+  }
   this.rotate45deg = function(x, y) {
     var tmp = this.cartesian2polar(x, y);
     tmp.angle -= 0.78539816; // Rotate coordinate by 45 degrees
@@ -139,8 +218,21 @@ function meter(type) {
     var y = radius * Math.cos(angle);
     return {x:x, y:y};
   };
+  this.getPeak = function(buffer) {
+		var len = buffer.length;
+		var min = +Infinity;
+		var max = -Infinity;
+
+		for (var i = 0; i < len; i++) {
+			var frame = buffer[i];
+			if (frame < min) min = frame;
+			else if (frame > max) max = frame;
+		}
+
+    return Math.max(Math.abs(min), Math.abs(min));
+	}
   this.resizer = function() {
-    this.log("resizer");
+    //this.log("resizer");
     // check if our canvas was risized
     if ((this.width !== this.canvas.clientWidth) || (this.height !== this.canvas.clientHeight)) {
       this.width = this.canvas.width = this.canvas.clientWidth;
@@ -148,10 +240,6 @@ function meter(type) {
       this.log("canvas resized");
     }
   }
-
-  //
-  // Public
-  //
   this.start = function(source, drawcanvas) {
     this.log("Meter.start");
 

@@ -57,6 +57,9 @@ var ATools = (function () {
     right.pan.value = 1;
     my.ana.L = source.context.createAnalyser();
     my.ana.R = source.context.createAnalyser();
+    //my.ana.L.minDecibels = my.ana.R.minDecibels = -90;
+    //my.ana.L.maxDecibels = my.ana.R.maxDecibels = +10;
+
     left.connect(my.ana.L);
     right.connect(my.ana.R);
     /*

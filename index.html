@@ -34,7 +34,7 @@
   </style>
 </head>
 <body>
-  <audio controls id="myAudio">
+  <audio controls id="myAudio" loop>
     <source src="audio/WulleWulle.mp3"/>
   </audio>
   <button onclick="start()">Start</button>&nbsp;
@@ -69,12 +69,17 @@
       if (!analyzers) {
         window.analyzers = ATools.createAnalyzer( myAudio ); // needs gainNode or audio tag id as parameter
       }
-      //Goniometer.start(analyzers, vectorcanvas);
 
       // now the meters
       meter_gonio = new meter('gon');
       meter_corr = new meter('cor');
       meter_vu = new meter('vu');
+
+      // config the meters
+      meter_corr.bgLines = ['M'];
+      meter_vu.bgLines = [];
+
+      // start the meters
       meter_gonio.start(analyzers, vectorCanvas);
       meter_corr.start(analyzers, corCanvas);
       meter_vu.start(analyzers, ppmCanvas);
