@@ -40,9 +40,7 @@ I will start with plain goniometer, because there are already several other vu/s
 - https://dsp.stackexchange.com/questions/1671/calculate-phase-angle-between-two-signals-i-e-digital-phase-meter
 
 ## How to implement
-"index.html" shows how to connect to Juergen Wothkes scriptprocessor player.
-
-"audiotag.html"shows how to connect to an HTML audio tag.
+"index.html" shows how to connect to an audio tag. Does also work with GainNode.
 
 ## Wiki:
 A goniometer is often included in analog audio equipment to display a Lissajous figure which shows the amount of stereo (that is, phase differences) in a dual-channel signal. It allows the sound technician to adjust for optimal stereo and determine the makeup of errors such as an inverted signal. Many goniometers also provide a VU or PPM as a secondary function. A goniometer adapted for surround metering is called a 'jellyfish display'. This term was coined by DK-Technologies A/S from Denmark.

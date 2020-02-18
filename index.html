@@ -2,23 +2,41 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>jsGoniometer by DrSnuggles</title>
-  <script src="//cdn.jsdelivr.net/gh/wothke/webaudio-player/htdocs_example/stdlib/scriptprocessor_player.min.js"></script>
-  <!-- <script src="//cdn.jsdelivr.net/gh/wothke/webAyumi/htdocs/backend_ayumi.js"></script> -->
-  <script src="//cdn.jsdelivr.net/gh/wothke/libxmp-4.4.1/emscripten/htdocs/backend_xmp.js"></script>
-  <script src="goniometer.js"></script>
+  <title>Audio meters by DrSnuggles</title>
+  <script src="audiotools.js"></script> <!-- needed -->
+  <script src="meter.js"></script>
   <style>
-    #vectorcanvas {
+    #vectorCanvas,
+    #corCanvas,
+    #ppmCanvas
+    {
       position: absolute;
-      left: 0;
-      width: 100vw;
-      bottom: 0;
-      height: 90vh;
       pointer-events: none;
+    }
+    #vectorCanvas {
+      left: 0;
+      bottom: 10vh;
+      width: 80vw;
+      height: 80vh;
+    }
+    #corCanvas {
+      left: 0;
+      bottom: 0;
+      width: 80vw;
+      height: 10vh;
+    }
+    #ppmCanvas {
+      right: 0;
+      bottom: 0;
+      width: 20vw;
+      height: 90vh;
     }
   </style>
 </head>
 <body>
+  <audio controls id="myAudio">
+    <source src="audio/WulleWulle.mp3"/>
+  </audio>
   <button onclick="start()">Start</button>&nbsp;
   <button onclick="stop()">Stop</button>&nbsp;
   FFT: <select id="fftSize" onchange="change_fftSize(this.value);">
@@ -36,35 +54,74 @@
   </select>&nbsp;
   Opacity <span id="actOpa">1.00</span>: <input type="range" min="0" max="1" value="1.00" step="0.01" onchange="change_opacity(this.value);"/>
 
-  <canvas id="vectorcanvas"></canvas>
+  <canvas id="vectorCanvas"></canvas>
+  <canvas id="corCanvas"></canvas>
+  <canvas id="ppmCanvas"></canvas>
 
   <script>
-    (function (){
-      var song = "//modland.com/pub/modules/YM/Jochen%20Hippel/rings%20of%20medusa%20-%20in-game.ym";
-      song = "audio/01_scalesmannmisfire.fym";
-      song = "audio/alchemy.it";
-      // start music, doesn't matter if enableSpectrum is true or false
-      //ScriptNodePlayer.createInstance(new AyumiBackendAdapter(), "", [], false, function(){}, function(){}, function(){ScriptNodePlayer.getInstance().loadMusicDataFromCache(song, {}, function(){});}); // backendAdapter, basePath, requiredFiles, enableSpectrum, onPlayerReady, onTrackReadyToPlay, onTrackEnd, doOnUpdate, externalTicker
-      ScriptNodePlayer.createInstance(new XMPBackendAdapter(), "", [], false, function(){}, function(){}, function(){ScriptNodePlayer.getInstance().loadMusicDataFromCache(song, {}, function(){});}); // backendAdapter, basePath, requiredFiles, enableSpectrum, onPlayerReady, onTrackReadyToPlay, onTrackEnd, doOnUpdate, externalTicker
-      ScriptNodePlayer.getInstance().loadMusicFromURL(song, {}, function(){}, function(){}, function(){}); // url, options, onCompletion, onFail, onProgress
-      start();
-    })();
+    var analyzers, meter_gonio, meter_corr, meter_vu;
 
     function start() {
-      Goniometer.start(ScriptNodePlayer.getInstance()._gainNode, vectorcanvas);
+      myAudio.play(); // play audio, just for convenience
+
+      // new way to init, because there is no need to have multiple analzer nodes for each component, instead one for all
+      // but only if they not already done
+      if (!analyzers) {
+        window.analyzers = ATools.createAnalyzer( myAudio ); // needs gainNode or audio tag id as parameter
+      }
+      //Goniometer.start(analyzers, vectorcanvas);
+
+      // now the meters
+      meter_gonio = new meter('gon');
+      meter_corr = new meter('cor');
+      meter_vu = new meter('vu');
+      meter_gonio.start(analyzers, vectorCanvas);
+      meter_corr.start(analyzers, corCanvas);
+      meter_vu.start(analyzers, ppmCanvas);
     }
 
     function stop() {
-      Goniometer.stop();
+      meter_gonio.stop();
+      meter_corr.stop();
+      meter_vu.stop();
     }
 
     function change_fftSize(newSize) {
-      Goniometer.setFFTsize(newSize);
+      meter_gonio.setFFTsize(newSize);
+      meter_corr.setFFTsize(newSize);
+      meter_vu.setFFTsize(newSize);
     }
 
     function change_opacity(newOpa) {
-      Goniometer.bgColor = [Goniometer.bgColor[0], Goniometer.bgColor[1], Goniometer.bgColor[2], newOpa];
+      meter_gonio.bgColor = [meter_gonio.bgColor[0], meter_gonio.bgColor[1], meter_gonio.bgColor[2], newOpa];
+      meter_corr.bgColor = [meter_corr.bgColor[0], meter_corr.bgColor[1], meter_corr.bgColor[2], newOpa];
+      meter_vu.bgColor = [meter_vu.bgColor[0], meter_vu.bgColor[1], meter_vu.bgColor[2], newOpa];
       actOpa.innerText = (newOpa*1).toFixed(2);
+    }
+
+    // Drop handler
+    var dropArea = window;
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+    function preventDefaults (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    dropArea.addEventListener('drop', handleDrop, false)
+    function handleDrop(e) {
+      let dt = e.dataTransfer;
+      let files = dt.files;
+      var file = files[0]; // just use first dropped file right now, maybe add playlist support
+      var reader = new FileReader();
+      var filename = file.name;
+      var type = (filename.toLowerCase().indexOf(".mp3") > 0) ? "audio/mp3" : "audio/wav";
+      reader.onload = function(ev) {
+        var blob = new Blob([ev.target.result], { type: type });
+        myAudio.src = URL.createObjectURL(blob);
+        myAudio.play();
+      };
+      reader.readAsArrayBuffer(file); // is later converterd to blob
     }
   </script>
 
