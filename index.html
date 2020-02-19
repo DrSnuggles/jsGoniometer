@@ -5,39 +5,192 @@
   <title>Audio meters by DrSnuggles</title>
   <script src="audiotools.js"></script> <!-- needed -->
   <script src="meter.js"></script>
-  <style>
-    #vectorCanvas,
-    #corCanvas,
-    #ppmCanvas
-    {
-      position: absolute;
-      pointer-events: none;
-    }
-    #vectorCanvas {
-      left: 0;
-      bottom: 10vh;
-      width: 80vw;
-      height: 80vh;
-    }
-    #corCanvas {
-      left: 0;
-      bottom: 0;
-      width: 80vw;
-      height: 10vh;
-    }
-    #ppmCanvas {
-      right: 0;
-      bottom: 0;
-      width: 20vw;
-      height: 90vh;
-    }
-  </style>
+  <script src="dnd.js"></script> <!-- drag n drop -->
+  <link href="style.css" type="text/css" rel="stylesheet"/>
 </head>
 <body>
-  <audio controls id="myAudio" loop>
-    <source src="audio/WulleWulle.mp3"/>
-  </audio>
-  <button onclick="start()">Start</button>&nbsp;
+  <!-- top menu -->
+  <select id="testselect" onchange="play();">
+    <optgroup label="Ellen L. Ripley">
+      <option value="">WulleWulle.mp3</option>
+      <option value="">WulleWulle_mono.mp3</option>
+      <option value="">WulleWulle_2mono.mp3</option>
+      <option value="">WulleWulle_left.mp3</option>
+      <option value="">WulleWulle_right.mp3</option>
+      <option value="">WulleWulle_phase.mp3</option>
+      <option value="">WelcomeToOurStation.mp3</option>
+    </optgroup>
+    <optgroup label="Fraunhofer">
+      <option value="tests/Fraunhofer">ChID-BLITS-EBU-Narration.mp4</option>
+      <option value="tests/Fraunhofer">ChID-BLITS-EBU-Narration441-16b.wav</option>
+      <option value="tests/Fraunhofer">ChID-BLITS-EBU-Narration441AOT2.mp4</option>
+      <option value="tests/Fraunhofer">ChID-BLITS-EBU.mp4</option>
+      <option value="tests/Fraunhofer">SBR_LFEtest5_1.mp4</option>
+      <option value="tests/Fraunhofer">SBR_LFETest5_1-441-16b.wav</option>
+      <option value="tests/Fraunhofer">LFE-SBR.mp4</option>
+      <option value="tests/Fraunhofer">7.1auditionOutLeader_v2_rtb.mp4</option>
+      <option value="tests/Fraunhofer">7.1auditionOutLeader v2.wav</option>
+    </optgroup>
+    <optgroup label="EBU Loudness Test Set v05">
+      <option value="tests/EBU Loudness Test Set v05">1kHz Sine -20 LUFS-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">1kHz Sine -26 LUFS-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">1kHz Sine -40 LUFS-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">EBU-reference_listening_signal_pinknoise_500Hz_2kHz_R128.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-1-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-1-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-10-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-11-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-12-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-13-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-14-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-15-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-16-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-17-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-18-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-19-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-2-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-20-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-3-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-4-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-5-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-6-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-7-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-8-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-10-9-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-11-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-12-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-1-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-10-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-11-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-12-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-13-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-14-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-15-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-16-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-17-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-18-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-19-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-2-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-20-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-3-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-4-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-5-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-6-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-7-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-8-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-13-9-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-14-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-15-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-16-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-17-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-18-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-19-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-2-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-20-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-2011-8_seq-3342-6-24bit-v02.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-21-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-22-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-23-24bit.wav.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-3-16bit-v02.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-4-16bit-v02.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-5-16bit-v02.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-6-5channels-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-6-6channels-WAVEEX-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-7_seq-3342-5-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3341-9-24bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3342-1-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3342-2-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3342-3-16bit.wav</option>
+      <option value="tests/EBU Loudness Test Set v05">seq-3342-4-16bit.wav</option>
+    </optgroup>
+    <optgroup label="Spoton">
+      <option value="tests/Spoton">100Hz_16_44_AB_0.wav</option>
+      <option value="tests/Spoton">100Hz_16_48_AB_0.wav</option>
+      <option value="tests/Spoton">10kHz_16_44_AB_0.wav</option>
+      <option value="tests/Spoton">10kHz_16_48_AB_0.wav</option>
+      <option value="tests/Spoton">1kHz_16_11_AB_0.wav</option>
+      <option value="tests/Spoton">1kHz_16_22_AB_0.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_0.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M10.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M12.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M18.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M2.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M20.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M24.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M4.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M6.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_AB_M8.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_A_0.wav</option>
+      <option value="tests/Spoton">1kHz_16_44_B_0.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_0.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M10.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M12.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M14.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M16.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M18.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M2.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M20.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M21.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M24.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M4.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M6.wav</option>
+      <option value="tests/Spoton">1kHz_16_48_AB_M8.wav</option>
+      <option value="tests/Spoton">1kHz_16_8_AB_0.wav</option>
+      <option value="tests/Spoton">1kHz_16_96_AB_0.wav</option>
+      <option value="tests/Spoton">3kHz_16_44_AB_0.wav</option>
+      <option value="tests/Spoton">3kHz_16_48_AB_0.wav</option>
+      <option value="tests/Spoton">BLITS_16_48_M18FS.wav</option>
+      <option value="tests/Spoton">BLITS_16_48_M8FS.wav</option>
+      <option value="tests/Spoton">brown_noise.wav</option>
+      <option value="tests/Spoton">ding_16_08_AB.wav</option>
+      <option value="tests/Spoton">ding_16_11_AB.wav</option>
+      <option value="tests/Spoton">ding_16_22_AB.wav</option>
+      <option value="tests/Spoton">ding_16_44_AB.wav</option>
+      <option value="tests/Spoton">ding_16_48_AB.wav</option>
+      <option value="tests/Spoton">ding_16_96_AB.wav</option>
+      <option value="tests/Spoton">DTMF0_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF1_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF2_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF3_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF4_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF5_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF6_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF7_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF8_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF9_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMFa_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMFb_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMFc_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMFd_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMFe_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMFf_48_A_M18.wav</option>
+      <option value="tests/Spoton">DTMF_48_TestTones.wav</option>
+      <option value="tests/Spoton">DTMF_48_TestToneSeq.wav</option>
+      <option value="tests/Spoton">GLITS_16_44_0FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_44_M18FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_44_M20FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_44_M21FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_44_M24FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_48_0FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_48_M18FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_48_M20FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_48_M21FS.wav</option>
+      <option value="tests/Spoton">GLITS_16_48_M24FS.wav</option>
+      <option value="tests/Spoton">Ident_2Ch.wav</option>
+      <option value="tests/Spoton">Ident_4Ch.wav</option>
+      <option value="tests/Spoton">Ident_6Ch.wav</option>
+      <option value="tests/Spoton">Ident_8Ch.wav</option>
+      <option value="tests/Spoton">pink_noise.wav</option>
+      <option value="tests/Spoton">Silence_16_44_AB_5s.wav</option>
+      <option value="tests/Spoton">Silence_16_48_AB_10s.wav</option>
+      <option value="tests/Spoton">Silence_16_48_AB_1s.wav</option>
+      <option value="tests/Spoton">Silence_16_48_AB_20s.wav</option>
+      <option value="tests/Spoton">Silence_16_48_AB_2s.wav</option>
+      <option value="tests/Spoton">Silence_16_48_AB_5s.wav</option>
+      <option value="tests/Spoton">white_noise.wav</option>
+    </optgroup>
+  </select>
+  <button onclick="play()">Start</button>&nbsp;
   <button onclick="stop()">Stop</button>&nbsp;
   FFT: <select id="fftSize" onchange="change_fftSize(this.value);">
     <option value="32">32</option>
@@ -54,81 +207,73 @@
   </select>&nbsp;
   Opacity <span id="actOpa">1.00</span>: <input type="range" min="0" max="1" value="1.00" step="0.01" onchange="change_opacity(this.value);"/>
 
+  <!-- canvas for meters -->
   <canvas id="vectorCanvas"></canvas>
   <canvas id="corCanvas"></canvas>
-  <canvas id="ppmCanvas"></canvas>
+  <canvas id="peakCanvas"></canvas>
+  <canvas id="avgCanvas"></canvas>
+  <canvas id="rmsCanvas"></canvas>
 
+  <!-- start the show -->
   <script>
-    var analyzers, meter_gonio, meter_corr, meter_vu;
+    var analyzers, meter_gonio, meter_corr, meter_peak, meter_avg, meter_rms;
+    init();
 
-    function start() {
-      myAudio.play(); // play audio, just for convenience
-
-      // new way to init, because there is no need to have multiple analzer nodes for each component, instead one for all
-      // but only if they not already done
-      if (!analyzers) {
-        window.analyzers = ATools.createAnalyzer( myAudio ); // needs gainNode or audio tag id as parameter
-      }
-
-      // now the meters
+    function init() {
+      // init meters
       meter_gonio = new meter('gon');
       meter_corr = new meter('cor');
-      meter_vu = new meter('vu');
+      meter_peak = new meter('peak');
+      meter_avg = new meter('avg');
+      meter_rms = new meter('rms');
 
-      // config the meters
+      // config meters
+      meter_gonio.bgColor = [17, 17, 68, 0.25];// alpha < 1.0 -> CRT persistance
+      meter_gonio.bgLines = ['L','R'];
+      meter_gonio.bgLineColor = [170, 50, 170, 1.0];
+      meter_gonio.color = [50, 200, 50, 1.0];
+
+      meter_corr.bgColor = [17, 17, 68, 1.0];// alpha = 1.0 -> no CRT
       meter_corr.bgLines = ['M'];
-      meter_vu.bgLines = [];
+      meter_corr.bgLineColor = [110, 255, 255, 1.0];
+      meter_corr.color = [50, 200, 50, 1.0];
 
-      // start the meters
-      meter_gonio.start(analyzers, vectorCanvas);
-      meter_corr.start(analyzers, corCanvas);
-      meter_vu.start(analyzers, ppmCanvas);
+      meter_peak.bgColor = [17, 17, 68, 1.0]; // alpha = 1.0 -> no CRT
+      meter_peak.bgLines = [];
+      meter_peak.color = [255, 255, 180, 1.0];
+
+      meter_avg.bgColor = [17, 68, 17, 1.0]; // alpha = 1.0 -> no CRT
+      meter_avg.bgLines = [];
+      meter_avg.color = [255, 255, 180, 1.0];
+
+      meter_rms.bgColor = [68, 17, 17, 1.0]; // alpha = 1.0 -> no CRT
+      meter_rms.bgLines = [];
+      meter_rms.color = [255, 255, 180, 1.0];
+
+      // start
+      meter_gonio.start(vectorCanvas);
+      meter_corr.start(corCanvas);
+      meter_peak.start(peakCanvas);
+      meter_avg.start(avgCanvas);
+      meter_rms.start(rmsCanvas);
     }
 
-    function stop() {
-      meter_gonio.stop();
-      meter_corr.stop();
-      meter_vu.stop();
-    }
-
-    function change_fftSize(newSize) {
-      meter_gonio.setFFTsize(newSize);
-      meter_corr.setFFTsize(newSize);
-      meter_vu.setFFTsize(newSize);
-    }
-
+    // change settings
     function change_opacity(newOpa) {
+      // goniometer is only CRT style display
       meter_gonio.bgColor = [meter_gonio.bgColor[0], meter_gonio.bgColor[1], meter_gonio.bgColor[2], newOpa];
-      meter_corr.bgColor = [meter_corr.bgColor[0], meter_corr.bgColor[1], meter_corr.bgColor[2], newOpa];
-      meter_vu.bgColor = [meter_vu.bgColor[0], meter_vu.bgColor[1], meter_vu.bgColor[2], newOpa];
       actOpa.innerText = (newOpa*1).toFixed(2);
     }
+    function change_fftSize(newSize) {
+      ATools.setFFTsize(newSize);
+    }
+    function play() {
+      ATools.loadAudio("audio/"+ testselect.value +"/"+ testselect.options[testselect.selectedIndex].text);
+    }
+    function stop() {
+      ATools.stopAudio();
+    }
 
-    // Drop handler
-    var dropArea = window;
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-      dropArea.addEventListener(eventName, preventDefaults, false);
-    });
-    function preventDefaults (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    dropArea.addEventListener('drop', handleDrop, false)
-    function handleDrop(e) {
-      let dt = e.dataTransfer;
-      let files = dt.files;
-      var file = files[0]; // just use first dropped file right now, maybe add playlist support
-      var reader = new FileReader();
-      var filename = file.name;
-      var type = (filename.toLowerCase().indexOf(".mp3") > 0) ? "audio/mp3" : "audio/wav";
-      reader.onload = function(ev) {
-        var blob = new Blob([ev.target.result], { type: type });
-        myAudio.src = URL.createObjectURL(blob);
-        myAudio.play();
-      };
-      reader.readAsArrayBuffer(file); // is later converterd to blob
-    }
   </script>
-
 </body>
 </html>

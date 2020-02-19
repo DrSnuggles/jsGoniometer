@@ -1,0 +1,62 @@
+:root {
+  --bgCol: #114;
+  --mainCol: #3F3;
+  --darkCol: #333;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bgCol);
+  color: var(--mainCol);
+}
+button {
+  border: 1px solid var(--mainCol);
+  border-radius: 50%;
+  background-color: var(--bgCol);
+  color: var(--mainCol);
+}
+button:focus {
+  border: 0;
+}
+#vectorCanvas,
+#corCanvas,
+#peakCanvas,
+#avgCanvas,
+#rmsCanvas
+{
+  position: absolute;
+  pointer-events: none;
+}
+#vectorCanvas {
+  left: 0;
+  bottom: 10vh;
+  width: 40vw;
+  height: 80vh;
+}
+#corCanvas {
+  left: 0;
+  bottom: 0;
+  width: 40vw;
+  height: 10vh;
+  border-bottom: 1px solid var(--mainCol);
+  border-left: 1px dotted var(--mainCol);
+  border-right: 1px dotted var(--mainCol);
+}
+#peakCanvas {
+  right: 40vw;
+  bottom: 0;
+  width: 20vw;
+  height: 90vh;
+}
+#avgCanvas {
+  right: 20vw;
+  bottom: 0;
+  width: 20vw;
+  height: 90vh;
+}
+#rmsCanvas {
+  right: 0;
+  bottom: 0;
+  width: 20vw;
+  height: 90vh;
+}

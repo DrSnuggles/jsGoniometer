@@ -17,16 +17,15 @@ function meter(type) {
   this.bgColor = [255, 255, 255, 1]; // background color std. white HTML, 4th value is used by fade to imitate CRT, but i don't like// use bgColor[3] to imitate CRT
   this.bgLineColor = [96, 0, 0, 0.5]; // color rgba for all meter lines
   this.color = [0, 96, 0, 1]; // color rgba
-  this.ana;      // ATools.ana
   this.canvas = null;       // canvas for resizing
   this.ctx = null,          // 2D context for drawing, just get it once
   this.width = null;        // width of canvas = calced pixels
   this.height = null;       // height of canvas = calced pixels
   this.raf = null;          // ref to RAF, needed to cancel RAF
   this.corr = null;         // Correlation
-  this.val = {'L':0,'R':0,'C':0,'LS':0,'RS':0}; // value foe example Root Mean Square of each channel if type = rms
-  this.damp = 0.95;    // damping
-  this.debug = false; // display console logs?
+  this.val = [];            // values for each channel which we are interesed in e.g. Root Mean Square
+  this.damp = 0.95;         // damping
+  this.debug = true; // display console logs?
 
   //
   // Functions
@@ -104,93 +103,112 @@ function meter(type) {
     this.ctx.stroke(); // finally draw
   };
   this.drawMeter = function() {
-    var dataL = new Float32Array(this.ana.L.frequencyBinCount);
-    var dataR = new Float32Array(this.ana.R.frequencyBinCount);
-    this.ana.L.getFloatTimeDomainData(dataL);
-    this.ana.R.getFloatTimeDomainData(dataR);
+    var cnt = ATools.ana.length; // channel count
+    if (cnt === 0) return; // no channels --> no meter
+    var data = [];
+    for (var i = 0; i < cnt; i++) {
+      data.push( new Float32Array(ATools.ana[0].frequencyBinCount) );
+      //if (this.type === "gon" || this.type === "cor") {
+      ATools.ana[i].getFloatTimeDomainData(data[i]);
+      //  ATools.ana[i].getFloatFrequencyData(data[i]);
+    }
 
     this.ctx.lineWidth = 1;
     this.ctx.strokeStyle = 'rgba('+this.color[0]+', '+this.color[1]+', '+this.color[2]+', '+this.color[3]+')';
     this.ctx.fillStyle = 'rgba('+this.color[0]+', '+this.color[1]+', '+this.color[2]+', '+this.color[3]+')';
     this.ctx.beginPath();
     var rotated;
-    var barwidth = 10;
-    var barheight = 10;
+    //var barheight = 10;
+    var barwidth = this.width/cnt ; // used for vu meters, corr meter has own
     var midH = this.width/2;
     var midV = this.height/2;
-    var val = {
-      L:0,
-      R:0,
-      C:0,
-      LS:0,
-      RS:0
-    };
+    var padding = 4; // corr meter
+    var val = new Array(cnt).fill(0);
+    if (this.val.length !== val.length) {
+      // channel count changed
+      this.val = val;
+    }
+
+    var gradientV = this.ctx.createLinearGradient(0, 0, 0, this.height);
+    gradientV.addColorStop(1,'#000000');
+    gradientV.addColorStop(0.75,'#00FF00');
+    gradientV.addColorStop(0.25,'#FFFF00');
+    gradientV.addColorStop(0.1,'#FF0000');
+
+    var gradientH = this.ctx.createLinearGradient(0, 0, this.width, 0);
+    //gradientH.addColorStop(1,'#FF0000');
+    //gradientH.addColorStop(0.6,'#FFFF00');
+    gradientH.addColorStop(0.5,'#00FF00');
+    gradientH.addColorStop(0.4,'#FFFF00');
+    gradientH.addColorStop(0,'#FF0000');
 
     switch (this.type) {
       case "gon":
         // move to start point
-        rotated = this.rotate45deg(dataR[0], dataL[0]);  // Right channel is mapped to x axis
+        var x = (data[1]) ? data[1][0] : 0; // take care of single channel signals
+        rotated = this.rotate45deg(x, data[0][0]);  // Right channel is mapped to x axis
         this.ctx.moveTo(rotated.x * this.width + midH, rotated.y* this.height + this.height/2);
 
         // draw line
-        for (var i = 1; i < dataL.length; i++) {
-          rotated = this.rotate45deg(dataR[i], dataL[i]);
+        for (var i = 1; i < data[0].length; i++) {
+          x = (data[1]) ? data[1][i] : 0; // take care of single channel signals
+          rotated = this.rotate45deg(x, data[0][i]);
           this.ctx.lineTo(rotated.x * this.width + midH, rotated.y* this.height + this.height/2);
         }
 
         break;
       case "cor":
         // ToDo: orientation
+        barwidth = this.width/30; // corr meter
 
         var corr = 0;
+        var x;
         // sum up corr
-        for (var i = 0; i < dataL.length; i++) {
+        for (var i = 0; i < data[0].length; i++) {
           // ToDo: just sum up L and R here
-          rotated = this.rotate45deg(dataR[i], dataL[i]);
+          x = (data[1]) ? data[1][i] : 0; // take care of single channel signals
+          rotated = this.rotate45deg(x, data[0][i]);
           rotated = this.rotate45deg(rotated.x, rotated.y);
           rotated = this.rotate45deg(rotated.x, rotated.y);
           corr += this.getCorr(rotated.x, rotated.y);
         }
-        this.corr = (corr / dataL.length + this.corr*this.damp)/2.0;
+        corr = corr / data[0].length;
+        this.corr = (corr + this.corr*this.damp)/2.0;
 
         // now draw
-        this.ctx.fillRect(this.corr * midH + midH - barwidth/2, 0, barwidth, this.height);
+        this.ctx.fillStyle = gradientH;
+        this.ctx.fillRect(this.corr * midH + midH - barwidth/2, padding, barwidth, this.height-(2*padding));
+        //this.ctx.fillRect(0, 0, this.width, this.height);
 
+        break;
+      case 'peak':
+        this.ctx.fillStyle = gradientV;
+        for (var i = 0; i < cnt; i++) {
+          val[i] = this.getPeak(data[i]) * (Math.E - 1);
+          this.val[i] = Math.max(val[i], this.val[i]*this.damp);
+          this.ctx.fillRect(barwidth*i+padding, (1-this.val[i]) * this.height, barwidth-2*padding, this.height-((1-this.val[i])*this.height));
+        }
+        break;
+      case 'avg':
+        this.ctx.fillStyle = gradientV;
+        for (var i = 0; i < cnt; i++) {
+          val[i] = this.getAvg(data[i]);// * (Math.E - 1);
+          this.val[i] = Math.max(val[i], this.val[i]*this.damp);
+          this.ctx.fillRect(barwidth*i+padding, (1-this.val[i]) * this.height, barwidth-2*padding, this.height-((1-this.val[i])*this.height));
+        }
         break;
       case 'rms':
-        // ToDo: orientation
-
-        for (var i = 0; i < dataL.length; i++) {
-          val.L += dataL[i] * dataL[i];
-          val.R += dataR[i] * dataR[i];
+        this.ctx.fillStyle = gradientV;
+        for (var i = 0; i < cnt; i++) {
+          for (var j = 0; j < data[0].length; j++) {
+            val[i] += data[i][j] * data[i][j];
+          }
+          val[i] = Math.sqrt(val[i] / data[0].length);
+          this.val[i] = Math.max(val[i], this.val[i]*this.damp);
+          this.ctx.fillRect(barwidth*i+padding, (1-this.val[i]) * this.height, barwidth-2*padding, this.height-((1-this.val[i])*this.height));
         }
-        val.L = Math.sqrt(val.L / dataL.length);
-        val.R = Math.sqrt(val.R / dataL.length);
-        this.val.L = Math.max(val.L, this.val.L*this.damp);
-        this.val.R = Math.max(val.R, this.val.R*this.damp);
-
-        // now draw
-        this.ctx.fillRect(0, (1-this.val.L) * this.height, midH, this.height-this.val.L*this.height);
-        this.ctx.fillRect(midH, (1-this.val.R) * this.height, midH, this.height-this.val.R*this.height);
-
-        break;
-      case 'db':
-
-        break;
-      case 'vu':
-        val.L = this.getPeak(dataL) * (Math.E - 1);
-        val.R = this.getPeak(dataR) * (Math.E - 1);
-
-        this.val.L = Math.max(val.L, this.val.L*this.damp);
-        this.val.R = Math.max(val.R, this.val.R*this.damp);
-
-        // now draw
-        this.ctx.fillRect(0, (1-this.val.L) * this.height, midH, this.height-((1-this.val.L)*this.height));
-        this.ctx.fillRect(midH, (1-this.val.R) * this.height, midH, this.height-((1-this.val.R)*this.height));
-
         break;
       default:
-
     }
 
     this.ctx.stroke();
@@ -218,18 +236,24 @@ function meter(type) {
     var y = radius * Math.cos(angle);
     return {x:x, y:y};
   };
-  this.getPeak = function(buffer) {
-		var len = buffer.length;
+  this.getPeak = function(buf) {
 		var min = +Infinity;
 		var max = -Infinity;
 
-		for (var i = 0; i < len; i++) {
-			var frame = buffer[i];
-			if (frame < min) min = frame;
-			else if (frame > max) max = frame;
+		for (var i = 0; i < buf.length; i++) {
+			if (buf[i] < min) min = buf[i];
+			else if (buf[i] > max) max = buf[i];
+		}
+    return Math.max(Math.abs(min), Math.abs(min));
+	}
+  this.getAvg = function(buf) {
+		var val = 0;
+
+		for (var i = 0; i < buf.length; i++) {
+      val += Math.abs(buf[i]);
 		}
 
-    return Math.max(Math.abs(min), Math.abs(min));
+    return val / buf.length;
 	}
   this.resizer = function() {
     //this.log("resizer");
@@ -240,17 +264,16 @@ function meter(type) {
       this.log("canvas resized");
     }
   }
-  this.start = function(source, drawcanvas) {
+  this.start = function(drawcanvas) {
     this.log("Meter.start");
 
-    this.ana = source;
     if (this.raf === null) {
       this.canvas = drawcanvas;
       this.ctx = this.canvas.getContext('2d');
       this.ctx.imageSmoothingEnabled = false; // faster
       this.resizer();
       // resizing, nicer than in loop, coz resize canvas clears it -> no nice fadeout possible
-      addEventListener('resize', this.resizer);
+      addEventListener('resize', () => this.resizer());
       this.raf = requestAnimationFrame(() => this.renderLoop());
       this.log("Meter started");
     } else {
@@ -262,16 +285,12 @@ function meter(type) {
     if (this.raf !== null) {
       cancelAnimationFrame(this.raf);
       this.raf = null;
-      removeEventListener('resize', this.resizer);
+      removeEventListener('resize', () => this.resizer());
       this.ctx.clearRect(0, 0, this.width, this.height);
       this.log("Meter stopped");
     } else {
       this.log("Meter already stopped");
     }
-  };
-  this.setFFTsize = function(newSize) {
-    this.ana.L.fftSize = this.ana.R.fftSize = newSize;
-    this.log("Meter FFT size set to: "+ newSize);
   };
 
 }

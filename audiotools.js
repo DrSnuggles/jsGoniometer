@@ -9,14 +9,12 @@ var ATools = (function () {
   // Init
   //
   var my = {    // public available settings
-    ana: {     // Analyzer
-      'L':null,         // left channel
-      'R':null,         // right channel
-      'C':null,         // center channel
-      'LS':null,         // left surround channel
-      'RS':null         // right surround channel
-    }
+    ana: []     // Analyser Nodes
   },
+  fft = 2048,   // fft Size
+  ctx = new AudioContext(), // Audio context
+  source,   // Source
+  splitter, // Splitter
   debug = false; // display console logs?
 
   //
@@ -25,70 +23,82 @@ var ATools = (function () {
   function log(out) {
     if (debug) console.log("ATools:", out);
   };
+  function splitAudio(buf) {
+    log("Loaded audio has "+ buf.numberOfChannels +" channels @"+ buf.sampleRate/1000.0 +"kHz");
+    log("Destination supports up to "+ ctx.destination.maxChannelCount +" channels");
+
+    // Routing: Source --> Splitter --> Analyser
+    //          Source --> Destination
+
+    // Source
+    source = ctx.createBufferSource();
+
+    // Splitter
+    splitter = ctx.createChannelSplitter( buf.numberOfChannels );
+    log(splitter);
+    source.connect(splitter); // Input --> Splitter
+
+    // Analyzers
+    my.ana = [];  // clear old analyzers
+    for (var i = 0; i < buf.numberOfChannels; i++) {
+      my.ana.push( ctx.createAnalyser() );
+      my.ana[i].fftSize = fft;
+      my.ana[i].smoothingTimeConstant = 0.0;
+      splitter.connect(my.ana[i], i, 0); // Route each single channel from Splitter --> Analyzer
+    }
+
+    source.connect(ctx.destination); // we also want to hear audio
+    playAudio( buf );
+  };
+  function playAudio(buf) {
+    source.buffer = buf;
+    source.start(0);
+    log("Audio playback started");
+  };
 
   //
   // Public
   //
-  my.createAnalyzer = function (source) {
-    log("splitChannels");
-
-    // analyze source
-    if (source.tagName === "AUDIO") {
-      log("Audio tag found")
-      var audioCtx = new AudioContext();
-      try {
-        source = audioCtx.createMediaElementSource(source); // creates source from audio tag with at least 2channels
-        source.connect(audioCtx.destination); // route source to destination
-      } catch(e){
-        log("Audio could not re-created");
-      }
-      log("Audio source created and routed");
+  my.loadAudio = function(url) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.onload = function() {
+      my.decodeAudio(xhr.response);
     }
-    // now we should have GainNode or MediaElementAudioSourceNode
-    //log(source);
-
-    var splitter = source.context.createChannelSplitter(2);
-    var left = source.context.createStereoPanner();
-    var right = source.context.createStereoPanner();
-    source.connect(splitter);
-    splitter.connect(left, 0);
-    splitter.connect(right, 1);
-    left.pan.value = -1;
-    right.pan.value = 1;
-    my.ana.L = source.context.createAnalyser();
-    my.ana.R = source.context.createAnalyser();
-    //my.ana.L.minDecibels = my.ana.R.minDecibels = -90;
-    //my.ana.L.maxDecibels = my.ana.R.maxDecibels = +10;
-
-    left.connect(my.ana.L);
-    right.connect(my.ana.R);
-    /*
-    // was intended for 1 channel signals
-    // 1 channel signals they are displayed as left only sources which is not correct
-    // BUT createMediaElementSource creates 2 channels from a 1 channel signal... depends on playback device???
-    switch (source.channelCount) {
-      case 0:
-        log("No audio channels found");
-        break;
-      case 1:
-        log("Mono signal found");
-        left.connect(anaL);
-        right.connect(anaL);
-        break;
-      case 2:
-        log("Stereo signal found");
-        left.connect(anaL);
-        right.connect(anaR);
-        break;
-      default:
-        log("Multichannel with "+ source.channelCount +" signals found");
-        left.connect(anaL);
-        right.connect(anaR);
-    }
-    */
-
-    return my.ana;
+    xhr.send();
   };
+  my.decodeAudio = function(buf) {
+    my.stopAudio();
+    ctx.decodeAudioData(buf, function(buf) {
+      splitAudio(buf);
+    }, function(e){
+      console.error(e);
+    });
+  };
+  my.stopAudio = function() {
+    if (!source) return; // nothing to stop
+    // stop playback
+    source.buffer = null;
+    source.stop();
+    // disconnect everything
+    try {
+      source.disconnect(splitter);
+      for (var i = 0; i < my.ana.length; i++) {
+        splitter.disconnect(my.ana[i], i, 0);
+      }
+    } catch(e) {
+      // mostly because audio already ended
+    }
+  };
+  my.setFFTsize = function (newSize) {
+    fft = newSize;
+    for (var i = 0; i < ATools.ana.length; i++) {
+      ATools.ana[i].fftSize = fft;
+    }
+    log("Meter FFT size set to: "+ fft);
+  };
+
   //
   // Exit
   //
