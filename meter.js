@@ -25,7 +25,7 @@ function meter(type) {
   this.corr = null;         // Correlation
   this.val = [];            // values for each channel which we are interesed in e.g. Root Mean Square
   this.damp = 0.95;         // damping
-  this.debug = true; // display console logs?
+  this.debug = false; // display console logs?
 
   //
   // Functions
@@ -108,9 +108,11 @@ function meter(type) {
     var data = [];
     for (var i = 0; i < cnt; i++) {
       data.push( new Float32Array(ATools.ana[0].frequencyBinCount) );
-      //if (this.type === "gon" || this.type === "cor") {
-      ATools.ana[i].getFloatTimeDomainData(data[i]);
+      //if (this.type === "gon") {
+        ATools.ana[i].getFloatTimeDomainData(data[i]);
+      //} else {
       //  ATools.ana[i].getFloatFrequencyData(data[i]);
+      //}
     }
 
     this.ctx.lineWidth = 1;
@@ -144,6 +146,9 @@ function meter(type) {
 
     switch (this.type) {
       case "gon":
+        // Correlation = Phase * Magnitude
+        // Magnitude = (L^2 + R^2)^1/2
+        // Phase = arctan(L/R)
         // move to start point
         var x = (data[1]) ? data[1][0] : 0; // take care of single channel signals
         rotated = this.rotate45deg(x, data[0][0]);  // Right channel is mapped to x axis
@@ -158,6 +163,23 @@ function meter(type) {
 
         break;
       case "cor":
+        barwidth = this.width/30; // corr meter
+        this.ctx.fillStyle = gradientH;
+
+        var corr = 0;
+        var x;
+        // sum up corr
+        for (var i = 0; i < data[0].length; i++) {
+          x = (data[1]) ? data[1][i] : data[0][i]; // take care of single channel signals, for corr use same data
+          corr += this.getCorr(x, data[0][i]);
+        }
+        corr = corr / data[0].length;
+        this.corr = (corr + this.corr*this.damp)/2.0;
+
+        this.ctx.fillRect(this.corr * midH + midH - barwidth/2, padding, barwidth, this.height-(2*padding));
+
+        break;
+      case "pan":
         // ToDo: orientation
         barwidth = this.width/30; // corr meter
 
@@ -174,7 +196,6 @@ function meter(type) {
         }
         corr = corr / data[0].length;
         this.corr = (corr + this.corr*this.damp)/2.0;
-
         // now draw
         this.ctx.fillStyle = gradientH;
         this.ctx.fillRect(this.corr * midH + midH - barwidth/2, padding, barwidth, this.height-(2*padding));
@@ -214,8 +235,10 @@ function meter(type) {
     this.ctx.stroke();
   };
   this.getCorr = function(x, y) {
-    var radius = Math.sqrt((x * x) + (y * y));
-    var angle = Math.atan2(y,x); // atan2 gives full circle
+    var tmp = this.cartesian2polar(x, y);
+    tmp.angle -= 0.78539816; // Rotate coordinate by 45 degrees
+    var radius = -1; // rotate again this time 180 degrees, is it this which break _left ?
+    var angle = Math.atan2(x,y); // atan2 gives full circle
     return radius * angle;
   }
   this.rotate45deg = function(x, y) {

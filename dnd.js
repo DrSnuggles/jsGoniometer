@@ -22,11 +22,15 @@ function handleDrop(e) {
   var filename = file.name;
   reader.onload = function(ev) {
     ATools.decodeAudio(ev.target.result);
-    /* old way via audio tag
-    var blob = new Blob([ev.target.result], { type: "audio/wav" });
-    myAudio.src = URL.createObjectURL(blob);
-    myAudio.play();
-    */
   };
+  reader.onprogress = function(e) {
+    if (e.lengthComputable) {
+      var perc = e.loaded / e.total * 100;
+      ATools.log("Progress: "+ perc.toFixed(1) + "%");
+    } else {
+      ATools.log("Progress: "+ ATools.formatBytes(e.loaded));
+    }
+  }
+
   reader.readAsArrayBuffer(file);
 }

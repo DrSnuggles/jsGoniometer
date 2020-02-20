@@ -6,30 +6,47 @@
   <script src="audiotools.js"></script> <!-- needed -->
   <script src="meter.js"></script>
   <script src="dnd.js"></script> <!-- drag n drop -->
+  <script src="wavesurfer_3.3.1.min.js"></script>
   <link href="style.css" type="text/css" rel="stylesheet"/>
 </head>
 <body>
   <!-- top menu -->
   <select id="testselect" onchange="play();">
     <optgroup label="Ellen L. Ripley">
+      <option value="">WelcomeToOurStation.mp3</option>
       <option value="">WulleWulle.mp3</option>
+      <option value="">WulleWulle_phase.mp3</option>
       <option value="">WulleWulle_mono.mp3</option>
       <option value="">WulleWulle_2mono.mp3</option>
       <option value="">WulleWulle_left.mp3</option>
       <option value="">WulleWulle_right.mp3</option>
-      <option value="">WulleWulle_phase.mp3</option>
-      <option value="">WelcomeToOurStation.mp3</option>
     </optgroup>
-    <optgroup label="Fraunhofer">
-      <option value="tests/Fraunhofer">ChID-BLITS-EBU-Narration.mp4</option>
-      <option value="tests/Fraunhofer">ChID-BLITS-EBU-Narration441-16b.wav</option>
-      <option value="tests/Fraunhofer">ChID-BLITS-EBU-Narration441AOT2.mp4</option>
-      <option value="tests/Fraunhofer">ChID-BLITS-EBU.mp4</option>
-      <option value="tests/Fraunhofer">SBR_LFEtest5_1.mp4</option>
-      <option value="tests/Fraunhofer">SBR_LFETest5_1-441-16b.wav</option>
-      <option value="tests/Fraunhofer">LFE-SBR.mp4</option>
-      <option value="tests/Fraunhofer">7.1auditionOutLeader_v2_rtb.mp4</option>
-      <option value="tests/Fraunhofer">7.1auditionOutLeader v2.wav</option>
+    <optgroup label="Fraunhofer Stereo">
+      <option value="https://www2.iis.fraunhofer.de/AAC">SBRtestStereoAot5Sig1.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">SBRtestStereoAot29Sig1.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">SBRtestStereoAot29Sig2.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">SBRtestStereoAot29Sig0.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">SBRtestStereoAot5SigusePS.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">SBRtestStereo-441-16b.wav</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">LFE-SBRstereo.mp4</option>
+    </optgroup>
+    <optgroup label="Fraunhofer xHE-AAC">
+      <option value="https://www2.iis.fraunhofer.de/AAC">xHEchID.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">xHEchID.wav</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">xHErefLevel.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">xHErefLevel.wav</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">xheAvSync_v2.mp4</option>
+    </optgroup>
+    <optgroup label="Fraunhofer Multichannel">
+      <option value="https://www2.iis.fraunhofer.de/AAC">ChID-BLITS-EBU-Narration.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">ChID-BLITS-EBU-Narration441-16b.wav</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">ChID-BLITS-EBU-Narration441AOT2.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">ChID-BLITS-EBU.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">SBR_LFEtest5_1.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">SBR_LFETest5_1-441-16b.wav</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">LFE-SBR.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">7.1auditionOutLeader_v2_rtb.mp4</option>
+      <option value="https://www2.iis.fraunhofer.de/AAC">7.1auditionOutLeader v2.wav</option>
     </optgroup>
     <optgroup label="EBU Loudness Test Set v05">
       <option value="tests/EBU Loudness Test Set v05">1kHz Sine -20 LUFS-16bit.wav</option>
@@ -206,6 +223,7 @@
     <option value="32768">32768</option>
   </select>&nbsp;
   Opacity <span id="actOpa">1.00</span>: <input type="range" min="0" max="1" value="1.00" step="0.01" onchange="change_opacity(this.value);"/>
+  <span id="stat"></span>
 
   <!-- canvas for meters -->
   <canvas id="vectorCanvas"></canvas>
@@ -213,10 +231,11 @@
   <canvas id="peakCanvas"></canvas>
   <canvas id="avgCanvas"></canvas>
   <canvas id="rmsCanvas"></canvas>
+  <div id="waveform"></div> <!-- used by wavesurfer-js -->
 
   <!-- start the show -->
   <script>
-    var analyzers, meter_gonio, meter_corr, meter_peak, meter_avg, meter_rms;
+    var wavesurfer, analyzers, meter_gonio, meter_corr, meter_peak, meter_avg, meter_rms;
     init();
 
     function init() {
@@ -256,6 +275,14 @@
       meter_peak.start(peakCanvas);
       meter_avg.start(avgCanvas);
       meter_rms.start(rmsCanvas);
+
+      // now i will try the wavesurfer-js
+      wavesurfer = WaveSurfer.create({
+          container: '#waveform',
+          scrollParent: true
+      });
+      wavesurfer.load('audio/tests/Fraunhofer/ChID-BLITS-EBU-Narration.mp4');
+
     }
 
     // change settings
@@ -268,7 +295,14 @@
       ATools.setFFTsize(newSize);
     }
     function play() {
-      ATools.loadAudio("audio/"+ testselect.value +"/"+ testselect.options[testselect.selectedIndex].text);
+      var path = testselect.value;
+      // remote sources are loaded via proxy
+      if (path.indexOf("http") === 0) {
+        path = "https://simpleproxy.drsnuggles.workers.dev?"+ path +"/";
+      } else {
+        path = "audio/"+ path +"/";
+      }
+      ATools.loadAudio(path + testselect.options[testselect.selectedIndex].text);
     }
     function stop() {
       ATools.stopAudio();
