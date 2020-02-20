@@ -25,6 +25,7 @@ function meter(type) {
   this.corr = null;         // Correlation
   this.val = [];            // values for each channel which we are interesed in e.g. Root Mean Square
   this.damp = 0.95;         // damping
+  this.label = ['L','R','C','LFE','Ls','Rs','Lb','Rb']; // for channel labeling
   this.debug = false; // display console logs?
 
   //
@@ -34,14 +35,14 @@ function meter(type) {
     if (this.debug) console.log("Meter:", out);
   };
   this.renderLoop = function() {
+    this.raf = requestAnimationFrame(() => this.renderLoop());
     this.clearMeter();
     if (this.bgLines.length > 0) {
       this.drawBGlines();
     }
     this.drawMeter();
-    this.raf = requestAnimationFrame(() => this.renderLoop());
   };
-  this.clearMeter = function () {
+  this.clearMeter = function() {
     //log("clearMeter");
     // clear/fade out old
     if (this.bgColor.length > 0) {
@@ -231,8 +232,21 @@ function meter(type) {
         break;
       default:
     }
-
     this.ctx.stroke();
+
+    // draw overlay
+    // i do here inside because i want to reuse the padding and other setting
+    this.ctx.beginPath();
+    this.ctx.fillStyle = 'rgba('+this.color[0]+', '+this.color[1]+', '+this.color[2]+', '+this.color[3]+')';
+    if (this.type === "peak" || this.type === "avg" || this.type === "rms") {
+      var fontsize = Math.floor((barwidth - barwidth/3)/2);
+      this.ctx.font = fontsize +"px Arial";
+      for (var i = 0; i < cnt; i++) {
+        this.ctx.fillText(this.label[i], i*barwidth+barwidth/3, this.height);
+      }
+    }
+    this.ctx.stroke();
+
   };
   this.getCorr = function(x, y) {
     var tmp = this.cartesian2polar(x, y);

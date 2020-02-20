@@ -6,7 +6,6 @@
   <script src="audiotools.js"></script> <!-- needed -->
   <script src="meter.js"></script>
   <script src="dnd.js"></script> <!-- drag n drop -->
-  <script src="wavesurfer_3.3.1.min.js"></script>
   <link href="style.css" type="text/css" rel="stylesheet"/>
 </head>
 <body>
@@ -231,11 +230,11 @@
   <canvas id="peakCanvas"></canvas>
   <canvas id="avgCanvas"></canvas>
   <canvas id="rmsCanvas"></canvas>
-  <div id="waveform"></div> <!-- used by wavesurfer-js -->
+  <canvas id="waveform"></canvas> <!-- used in ATools if found -->
 
   <!-- start the show -->
   <script>
-    var wavesurfer, analyzers, meter_gonio, meter_corr, meter_peak, meter_avg, meter_rms;
+    var wave, analyzers, meter_gonio, meter_corr, meter_peak, meter_avg, meter_rms;
     init();
 
     function init() {
@@ -276,25 +275,6 @@
       meter_avg.start(avgCanvas);
       meter_rms.start(rmsCanvas);
 
-      // give wavesurfer-js a chance
-      wavesurfer = WaveSurfer.create({
-        container: '#waveform',
-        height: waveform.clientHeight
-      });
-      wavesurfer.on('ready', function () {
-        wavesurfer.play();
-      });
-      wavesurfer.on('play', function () {
-        ATools.attach( wavesurfer.backend.buffer );
-      });
-      wavesurfer.on('audioprocess', function(){
-		    var position = wavesurfer.getCurrentTime() / wavesurfer.getDuration();
-	    });
-      onresize = resizer;
-      function resizer() {
-        // should do it here again... will make own
-      }
-
     } // init
 
     // change settings
@@ -316,15 +296,10 @@
       }
       var url = path + testselect.options[testselect.selectedIndex].text;
 
-      if (wavesurfer) {
-        wavesurfer.load( url );
-      } else {
-        ATools.loadAudio( url );
-      }
+      ATools.loadAudio( url );
     }
     function stop() {
       ATools.stopAudio();
-      wavesurfer.stop();
     }
 
   </script>
