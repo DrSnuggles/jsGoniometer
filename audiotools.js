@@ -16,7 +16,7 @@ var ATools = (function () {
   source,   // Source
   splitter, // Splitter
   isLoading = false, // avoid multiple starts, still possible via DND ;)
-  debug = false; // display console logs?
+  debug = true; // display console logs?
 
   //
   // Private
@@ -25,16 +25,19 @@ var ATools = (function () {
     if (debug) console.log("ATools:", out);
     if (document.getElementById("stat")) document.getElementById("stat").innerText = out;
   };
-  my.log = log;
   function splitAudio(buf) {
     log("Loaded audio has "+ buf.numberOfChannels +" channels @"+ buf.sampleRate/1000.0 +"kHz");
     log("Destination supports up to "+ ctx.destination.maxChannelCount +" channels");
 
+    if (!WaveSurferAudioContext) {
+      ctx = WaveSurferAudioContext;
+    } else {
+      // Source
+      source = ctx.createBufferSource();
+    }
+
     // Routing: Source --> Splitter --> Analyser
     //          Source --> Destination
-
-    // Source
-    source = ctx.createBufferSource();
 
     // Splitter
     splitter = ctx.createChannelSplitter( buf.numberOfChannels );
@@ -49,7 +52,11 @@ var ATools = (function () {
       splitter.connect(my.ana[i], i, 0); // Route each single channel from Splitter --> Analyzer
     }
 
-    source.connect(ctx.destination); // we also want to hear audio
+    if (!WaveSurferAudioContext) {
+       // we also want to hear audio
+       // wavesurfer does take care by his own
+      source.connect(ctx.destination);
+    }
     playAudio( buf );
   };
   function playAudio(buf) {
@@ -62,6 +69,7 @@ var ATools = (function () {
   //
   // Public
   //
+  my.log = log;
   my.loadAudio = function(url) {
     log("loadAudio: "+ url);
     if (isLoading) return false; // user already started to load, maybe i will abort old load... ToDo
@@ -103,9 +111,14 @@ var ATools = (function () {
       log("Unable to decode audio");
     });
   };
+  my.attach = function(buf) {
+    log("attach");
+    my.stopAudio();
+    splitAudio(buf);
+  }
   my.stopAudio = function() {
-    log("stopAudio");
     if (!source) return; // nothing to stop
+    log("stopAudio");
     // stop playback
     source.buffer = null;
     source.stop();

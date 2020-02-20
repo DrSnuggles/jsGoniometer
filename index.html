@@ -276,14 +276,26 @@
       meter_avg.start(avgCanvas);
       meter_rms.start(rmsCanvas);
 
-      // now i will try the wavesurfer-js
+      // give wavesurfer-js a chance
       wavesurfer = WaveSurfer.create({
-          container: '#waveform',
-          scrollParent: true
+        container: '#waveform',
+        height: waveform.clientHeight
       });
-      wavesurfer.load('audio/tests/Fraunhofer/ChID-BLITS-EBU-Narration.mp4');
+      wavesurfer.on('ready', function () {
+        wavesurfer.play();
+      });
+      wavesurfer.on('play', function () {
+        ATools.attach( wavesurfer.backend.buffer );
+      });
+      wavesurfer.on('audioprocess', function(){
+		    var position = wavesurfer.getCurrentTime() / wavesurfer.getDuration();
+	    });
+      onresize = resizer;
+      function resizer() {
+        // should do it here again... will make own
+      }
 
-    }
+    } // init
 
     // change settings
     function change_opacity(newOpa) {
@@ -302,10 +314,17 @@
       } else {
         path = "audio/"+ path +"/";
       }
-      ATools.loadAudio(path + testselect.options[testselect.selectedIndex].text);
+      var url = path + testselect.options[testselect.selectedIndex].text;
+
+      if (wavesurfer) {
+        wavesurfer.load( url );
+      } else {
+        ATools.loadAudio( url );
+      }
     }
     function stop() {
       ATools.stopAudio();
+      wavesurfer.stop();
     }
 
   </script>

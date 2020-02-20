@@ -29,13 +29,13 @@ button:focus {
 }
 #vectorCanvas {
   left: 0;
-  bottom: 10vh;
+  bottom: 50vh;
   width: 40vw;
-  height: 80vh;
+  height: 40vh;
 }
 #corCanvas {
   left: 0;
-  bottom: 0;
+  bottom: 40vh;
   width: 40vw;
   height: 10vh;
   border-bottom: 1px solid var(--mainCol);
@@ -44,19 +44,26 @@ button:focus {
 }
 #peakCanvas {
   right: 40vw;
-  bottom: 0;
+  bottom: 40vh;
   width: 20vw;
-  height: 90vh;
+  height: 50vh;
 }
 #avgCanvas {
   right: 20vw;
-  bottom: 0;
+  bottom: 40vh;
   width: 20vw;
-  height: 90vh;
+  height: 50vh;
 }
 #rmsCanvas {
   right: 0;
-  bottom: 0;
+  bottom: 40vh;
   width: 20vw;
-  height: 90vh;
+  height: 50vh;
+}
+#waveform {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 40vh;
 }
