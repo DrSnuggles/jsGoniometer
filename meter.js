@@ -175,8 +175,10 @@ function meter(type) {
           corr += this.getCorr(x, data[0][i]);
         }
         corr = corr / data[0].length;
+        // still something wrong where
+        if (corr > 1) corr = 1;
+        if (corr < -1) corr = -1;
         this.corr = (corr + this.corr*this.damp)/2.0;
-
         this.ctx.fillRect(this.corr * midH + midH - barwidth/2, padding, barwidth, this.height-(2*padding));
 
         break;

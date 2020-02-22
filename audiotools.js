@@ -13,22 +13,23 @@ var ATools = (function () {
   },
   fft = 2048,   // fft Size
   ctx = new AudioContext(), // Audio context
-  source,   // Source
+  source,   // SourceBufferNode
   splitter, // Splitter
   isLoading = false, // avoid multiple starts, still possible via DND ;)
   // new for waveform
-  raf = null, // ReqAnimFrame
-  sbuf,
-  cctx,
+  raf = requestAnimationFrame(renderLoop), // ReqAnimFrame
+  sbuf,       // decodec SourceBufferArray
   canvas,
-  width,
-  height,
+  cctx,       // canvas 2D context
+  width = 1920,   // waveform
+  height = 1080/2,// waveform
   wave,   // this is a save of generated waveform
+  halfRange = true, // if true only upper half (0.5..1.0) of waveform is displayed
   startOffset = 0, // where are we pos in audio
   startTime = 0,
   duration = 0,
   // finally display console logs?
-  debug = false;
+  debug = true;
 
   //
   // Private
@@ -39,16 +40,33 @@ var ATools = (function () {
   };
   function renderLoop() {
     raf = requestAnimationFrame(renderLoop);
+
+    // info (memory+clock)
+    var mem = my.formatBytes(performance.memory.usedJSHeapSize);// +' / '+ my.formatBytes(performance.memory.totalJSHeapSize) +' / '+ my.formatBytes(performance.memory.jsHeapSizeLimit);
+    var now = new Date();
+    now = now.toLocaleTimeString();
+    info.innerHTML = now +'<br/>'+ mem;
+
+    // not running --> exit
+    if (typeof cctx === "undefined") return;
+
     // clear old
     cctx.clearRect(0, 0, width, height);
     // draw bg = previously created wave
     cctx.putImageData(wave, 0, 0, 0, 0, wave.width, wave.height);
     // draw position
     if (source.buffer) {
-      var pos = ((source.context.currentTime -startTime +startOffset) / duration);
+      var pos = source.context.currentTime - startTime + startOffset;
+      var posP = ((pos) / duration);
       cctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      cctx.fillRect(0, 0, pos*width, height);
+      cctx.fillRect(0, 0, posP*width, height);
+      // audio info (samplerate pos/len)
+      if (pos > duration) pos = duration;
+      ainfo.innerHTML = formatTime(pos) +' / '+ formatTime(duration) +'<br/>'+ my.ana.length +'ch @'+source.buffer.sampleRate/1000 +'kHz';
     }
+  };
+  function formatTime(s) {
+    return new Date(1000 * s).toISOString().substr(11, 8) + (s % 1).toFixed(3).substr(1);
   };
   function drawWave(buf) {
     log("drawWave");
@@ -61,39 +79,43 @@ var ATools = (function () {
     for (var i = 0; i < channels; i++) {
       data.push( buf.getChannelData(i) );
     }
+    var chPeaks = new Array(channels).fill(0);
+    var chMin = new Array(channels).fill(+Infinity);
+    var chMax = new Array(channels).fill(-Infinity);
     for (var i = 0; i < data[0].length; i++) {
       peak = 0;
       for (var j = 0; j < channels; j++) {
-        peak = Math.max(peak, Math.abs(data[j][i]));
+        var val = Math.abs(data[j][i]);
+        if (val >= 1.0) chPeaks[j] += 1;
+        if (val < chMin[j]) chMin[j] = val;
+        if (val > chMax[j]) chMax[j] = val;
+        peak = Math.max(peak, val);
       }
       res.push( peak );
     }
+    for (var i = 0; i < channels; i++) {
+      console.info("Channel "+ i +" found Min="+ chMin[i] +" Max="+ chMax[i] + " Peaks="+ chPeaks[i]);
+    }
 
     // now draw them all, quite too much... i know
+    // to have better resolution in peak are i dismiss lower half of val range
     cctx.lineWidth = 1;
     cctx.strokeStyle = 'rgba(255, 255, 255, 1.0)';
     cctx.clearRect(0, 0, width, height);
     cctx.beginPath();
     cctx.moveTo(0, (1-res[0])* height);
     for (var i = 1; i < res.length; i++) {
-      cctx.lineTo(i/res.length*width, (1-res[i])*height);
+      if (halfRange) {
+        cctx.lineTo(i/res.length*width, (1-(res[i]-0.5)*2)*height); // half range
+      } else {
+        cctx.lineTo(i/res.length*width, (1-res[i])*height); // full range
+      }
     }
     cctx.stroke();
 
     // now save this for later reuse
     wave = cctx.getImageData(0, 0, width, height);
-  }
-  function resizer() {
-    // check if our canvas was resized
-    if ((width !== canvas.clientWidth) || (height !== canvas.clientHeight)) {
-      width = canvas.width = canvas.clientWidth;
-      height = canvas.height = canvas.clientHeight;
-      log("canvas resized");
-      drawWave( sbuf );
-      return true;
-    }
-    return false;
-  }
+  };
   function jumpTo(e) {
     var pos = Math.floor(e.offsetX / waveform.clientWidth * duration);
     try {
@@ -103,8 +125,7 @@ var ATools = (function () {
     }
     // have to reinit audio
     splitAudio(sbuf, pos);
-  }
-
+  };
   function splitAudio(buf, pos) {
     log("Loaded audio has "+ buf.numberOfChannels +" channels @"+ buf.sampleRate/1000.0 +"kHz");
     log("Destination supports up to "+ ctx.destination.maxChannelCount +" channels");
@@ -113,14 +134,17 @@ var ATools = (function () {
     if (document.getElementById("waveform")) {
       canvas = waveform;
       cctx = canvas.getContext('2d');
-      cctx.imageSmoothingEnabled = true;
-      sbuf = buf;
-      if (!resizer()) drawWave(buf); //only if we dont do that in resizer
-      if (raf === null) {
-        // first time init
-        onresize = resizer;
-        canvas.onclick = jumpTo;
-        raf = requestAnimationFrame(renderLoop);
+      cctx.imageSmoothingEnabled = false;
+      canvas.width = width;
+      canvas.height = height;
+      if (sbuf !== buf) {
+        log("Buffer changed");
+        sbuf = buf;
+        if (typeof wave === 'undefined') {
+          // first time init
+          canvas.onclick = jumpTo;
+        }
+        drawWave(buf);
       }
     }
 
@@ -219,14 +243,13 @@ var ATools = (function () {
       log("Audio was already disconnected");
     }
   };
-  my.setFFTsize = function (newSize) {
+  my.setFFTsize = function(newSize) {
     fft = newSize;
     for (var i = 0; i < ATools.ana.length; i++) {
       ATools.ana[i].fftSize = fft;
     }
     log("FFT size set to: "+ fft);
   };
-
 
   //
   // Exit

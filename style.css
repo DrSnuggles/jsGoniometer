@@ -20,50 +20,45 @@ button:focus {
 }
 #vectorCanvas,
 #corCanvas,
-#peakCanvas,
-#avgCanvas,
-#rmsCanvas
+#meterCanvas
 {
   position: absolute;
   pointer-events: none;
 }
 #vectorCanvas {
   left: 0;
-  bottom: 50vh;
-  width: 40vw;
-  height: 40vh;
+  bottom: 25vh;
+  width: 70vw;
+  height: 70vh;
 }
 #corCanvas {
   left: 0;
-  bottom: 40vh;
-  width: 40vw;
-  height: 10vh;
-  border-bottom: 1px solid var(--mainCol);
-  border-left: 1px dotted var(--mainCol);
-  border-right: 1px dotted var(--mainCol);
+  bottom: 20vh;
+  width: 70vw;
+  height: 5vh;
 }
-#peakCanvas {
-  right: 40vw;
-  bottom: 40vh;
-  width: 20vw;
-  height: 50vh;
-}
-#avgCanvas {
-  right: 20vw;
-  bottom: 40vh;
-  width: 20vw;
-  height: 50vh;
-}
-#rmsCanvas {
+#meterCanvas {
   right: 0;
-  bottom: 40vh;
-  width: 20vw;
-  height: 50vh;
+  bottom: 20vh;
+  width: 30vw;
+  height: 75vh;
 }
 #waveform {
   position: absolute;
   left: 0;
   bottom: 0;
   width: 100vw;
-  height: 40vh;
+  height: 20vh;
+}
+#info {
+  position: absolute;
+  top: 0;
+  right: 0;
+  text-align: right;
+}
+#ainfo {
+  position: absolute;
+  top: 0;
+  right: 10vw;
+  text-align: right;
 }
