@@ -24,8 +24,15 @@ function meter(type) {
   this.raf = null;          // ref to RAF, needed to cancel RAF
   this.corr = null;         // Correlation
   this.val = [];            // values for each channel which we are interesed in e.g. Root Mean Square
-  this.damp = 0.95;         // damping
+  this.peak = [];           // val for peak
+  this.peakTime = [];       // time for peak in samples
+//  this.damp = 0.95;         // damping
+// ^^ now solved with ATTACK and DECAY smoothing
   this.label = ['L','R','C','LFE','Ls','Rs','Lb','Rb']; // for channel labeling
+  this.lastPos = 0;         // to detect jumps
+  this.PEAK_DURATION = 500; // in ms
+  this.ATTACK_SMOOTHING = 1.; // .85
+  this.DECAY_SMOOTHING = .1;  //.16//.4
   this.debug = false; // display console logs?
 
   //
@@ -56,6 +63,7 @@ function meter(type) {
     //log("drawBGlines");
     this.ctx.lineWidth = 1;
     this.ctx.strokeStyle = 'rgba('+this.bgLineColor[0]+', '+this.bgLineColor[1]+', '+this.bgLineColor[2]+', '+this.bgLineColor[3]+')';
+    this.ctx.fillStyle = 'rgba('+this.bgLineColor[0]+', '+this.bgLineColor[1]+', '+this.bgLineColor[2]+', '+this.bgLineColor[3]+')';
     this.ctx.beginPath();
 
     if (this.bgLines.indexOf("P") !== -1) {
@@ -101,6 +109,39 @@ function meter(type) {
       this.ctx.ellipse(this.width/2, this.height/2, this.width/2, this.height/2, 0, 0, 2*Math.PI);
     }
 
+
+    // Dynamic Ranges:
+    // 16bit fix = 0 - -96db
+    // 24bit fix = 0 - -144db
+    // 32bit fix = 0 - -182dB
+    // 32bit float = +770db - -758db (770db more headroom !!)
+
+    // Colors:
+    // Red: > -10
+    // Yellow: -10 - -20
+    // Green: < -20
+    // 0dB analog = -18dB digital
+
+    // Digital System:
+    //dbFS =
+
+    if (this.bgLines.indexOf("dB") !== -1) {
+      // +24dB ... -50dB in 2dB steps = 37 lines
+      var fontsize = Math.floor(this.width/40);
+      this.ctx.font = fontsize +"px Arial";
+
+      var steps = 74;
+      var stepsize = this.height/steps;
+      for (let i = 0; i < steps; i++) {
+        this.ctx.moveTo(0, i * stepsize);
+        this.ctx.lineTo(this.width, i * stepsize);
+        if (i % 4 == 3) {
+          this.ctx.fillText(24-i-1 +'dB', 2, i * stepsize + fontsize);
+        }
+      }
+
+    }
+
     this.ctx.stroke(); // finally draw
   };
   this.drawMeter = function() {
@@ -129,14 +170,25 @@ function meter(type) {
     var val = new Array(cnt).fill(0);
     if (this.val.length !== val.length) {
       // channel count changed
+      this.log("Channel count changed");
       this.val = val;
+      this.peak = new Array(cnt).fill(0);
+      this.peakTime = new Array(cnt).fill(0);
     }
+    if (Math.abs(ATools.pos - this.lastPos) > 1*ATools.ana[0].context.sampleRate) {
+      // check for new track / jumps? distance from last pos
+      this.log("jump jump");
+      this.peak = new Array(cnt).fill(0);
+      this.peakTime = new Array(cnt).fill(0);
+    }
+    this.lastPos = ATools.pos;
 
     var gradientV = this.ctx.createLinearGradient(0, 0, 0, this.height);
+    gradientV.addColorStop(0,'#FF0000');
+    gradientV.addColorStop(24/74,'#FF0000');
+    gradientV.addColorStop(30/74,'#FFFF00');
+    gradientV.addColorStop(66/74,'#00FF00');
     gradientV.addColorStop(1,'#000000');
-    gradientV.addColorStop(0.75,'#00FF00');
-    gradientV.addColorStop(0.25,'#FFFF00');
-    gradientV.addColorStop(0.1,'#FF0000');
 
     var gradientH = this.ctx.createLinearGradient(0, 0, this.width, 0);
     //gradientH.addColorStop(1,'#FF0000');
@@ -178,7 +230,8 @@ function meter(type) {
         // still something wrong where
         if (corr > 1) corr = 1;
         if (corr < -1) corr = -1;
-        this.corr = (corr + this.corr*this.damp)/2.0;
+        //this.corr = (corr + this.corr*this.damp)/2.0;
+        this.corr = this.doSmooth(this.corr, corr);
         this.ctx.fillRect(this.corr * midH + midH - barwidth/2, padding, barwidth, this.height-(2*padding));
 
         break;
@@ -198,7 +251,8 @@ function meter(type) {
           corr += this.getCorr(rotated.x, rotated.y);
         }
         corr = corr / data[0].length;
-        this.corr = (corr + this.corr*this.damp)/2.0;
+        //this.corr = (corr + this.corr*this.damp)/2.0;
+        this.corr = this.doSmooth(this.corr, corr);
         // now draw
         this.ctx.fillStyle = gradientH;
         this.ctx.fillRect(this.corr * midH + midH - barwidth/2, padding, barwidth, this.height-(2*padding));
@@ -207,17 +261,63 @@ function meter(type) {
         break;
       case 'peak':
         this.ctx.fillStyle = gradientV;
-        for (var i = 0; i < cnt; i++) {
-          val[i] = this.getPeak(data[i]) * (Math.E - 1);
-          this.val[i] = Math.max(val[i], this.val[i]*this.damp);
-          this.ctx.fillRect(barwidth*i+padding, (1-this.val[i]) * this.height, barwidth-2*padding, this.height-((1-this.val[i])*this.height));
+        for (var i = 0; i < cnt; i++) { // channels
+          //val[i] = this.getPeak(data[i]) * (Math.E - 1);
+          this.val[i] = ATools.getDBFS(i) * (Math.E - 1);
+          //console.log("-infinity?? ", i, this.val[i], ATools.getDBFS(i));
+          //this.val[i] = Math.max(val[i], this.val[i]*this.damp);
+          this.val[i] = this.doSmooth(this.val[i], val[i]);
+          // 74 dB range -50 - +24
+          var dB = ATools.absoluteValueToDBFS(this.val[i]); // top = +24db
+          //this.ctx.fillRect(barwidth*i+padding, (1-this.val[i]/1.5) * this.height, barwidth-2*padding, this.height-((1-this.val[i]/1.5)*this.height));
+          dB -= 24;
+          var drawHeight = Math.abs(dB/74) * this.height;
+          this.ctx.fillRect(barwidth*i+padding, drawHeight, barwidth-2*padding, this.height-drawHeight);
+
+          // now the peak
+          this.ctx.stroke();
+          if (this.val[i] > this.peak[i] && this.val[i] !== -Infinity) {
+            this.peak[i] = this.val[i];
+            this.peakTime[i] = ATools.pos;
+          } else if (ATools.pos - this.peakTime[i] > ATools.ana[0].context.sampleRate * this.PEAK_DURATION/1000) {
+            //this.peak[i] = this.peak[i]*this.damp;
+            this.peak[i] = this.doSmooth(this.peak[i], this.val[i]);
+          }
+
+          // Colors:
+          // Red: > -10
+          // Yellow: -10 - -20
+          // Green: < -20
+          // 0dB analog = -18dB digital
+          dB = ATools.absoluteValueToDBFS(this.peak[i]); // top = +24db
+          //this.ctx.fillRect(barwidth*i+padding, (1-this.val[i]/1.5) * this.height, barwidth-2*padding, this.height-((1-this.val[i]/1.5)*this.height));
+
+          if (dB > -10) {
+            this.ctx.fillStyle = "#FF0000";
+          } else if (dB > -20) {
+            this.ctx.fillStyle = "#FFFF00";
+          } else {
+            this.ctx.fillStyle = "#00FF00";
+          }
+
+          dB -= 24;
+          drawHeight = Math.abs(dB/74) * this.height;
+          //this.ctx.fillRect(barwidth*i+padding, (1-this.peak[i]/.75) * this.height, barwidth-2*padding, 2);
+          this.ctx.fillRect(barwidth*i+padding, drawHeight, barwidth-2*padding, 2);
+          this.ctx.beginPath();
+          this.ctx.fillStyle = gradientV;
+
+          // debug
+          //this.ctx.fillRect(50, 0, this.width, this.height);
+
         }
         break;
       case 'avg':
         this.ctx.fillStyle = gradientV;
         for (var i = 0; i < cnt; i++) {
           val[i] = this.getAvg(data[i]);// * (Math.E - 1);
-          this.val[i] = Math.max(val[i], this.val[i]*this.damp);
+          //this.val[i] = Math.max(val[i], this.val[i]*this.damp);
+          this.val[i] = this.doSmooth(this.val[i], val[i]);
           this.ctx.fillRect(barwidth*i+padding, (1-this.val[i]) * this.height, barwidth-2*padding, this.height-((1-this.val[i])*this.height));
         }
         break;
@@ -228,7 +328,8 @@ function meter(type) {
             val[i] += data[i][j] * data[i][j];
           }
           val[i] = Math.sqrt(val[i] / data[0].length);
-          this.val[i] = Math.max(val[i], this.val[i]*this.damp);
+          //this.val[i] = Math.max(val[i], this.val[i]*this.damp);
+          this.val[i] = this.doSmooth(this.val[i], val[i]);
           this.ctx.fillRect(barwidth*i+padding, (1-this.val[i]) * this.height, barwidth-2*padding, this.height-((1-this.val[i])*this.height));
         }
         break;
@@ -244,7 +345,8 @@ function meter(type) {
       var fontsize = Math.floor((barwidth/3)/3);
       this.ctx.font = fontsize +"px Arial";
       for (var i = 0; i < cnt; i++) {
-        this.ctx.fillText(this.label[i] + ATools.getDBTP().toFixed(1)+'dBTP', i*barwidth+padding, this.height);
+        // this.ctx.fillText(this.label[i] + ATools.getDBTP(i).toFixed(1)+'dBTP', i*barwidth+padding, this.height);
+        this.ctx.fillText(this.label[i] + ATools.absoluteValueToDBFS(this.peak[i]).toFixed(1)+'dBFS', i*barwidth+padding, this.height);
       }
     }
     this.ctx.stroke();
@@ -256,13 +358,13 @@ function meter(type) {
     var radius = -1; // rotate again this time 180 degrees, is it this which break _left ?
     var angle = Math.atan2(x,y); // atan2 gives full circle
     return radius * angle;
-  }
+  };
   this.rotate45deg = function(x, y) {
     var tmp = this.cartesian2polar(x, y);
     tmp.angle -= 0.78539816; // Rotate coordinate by 45 degrees
     var tmp2 = this.polar2cartesian(tmp.radius, tmp.angle);
     return {x:tmp2.x, y:tmp2.y};
-  }
+  };
   this.cartesian2polar = function(x, y) {
     // Convert cartesian to polar coordinate
     var radius = Math.sqrt((x * x) + (y * y));
@@ -284,7 +386,7 @@ function meter(type) {
 			else if (buf[i] > max) max = buf[i];
 		}
     return Math.max(Math.abs(min), Math.abs(min));
-	}
+	};
   this.getAvg = function(buf) {
 		var val = 0;
 
@@ -293,7 +395,18 @@ function meter(type) {
 		}
 
     return val / buf.length;
-	}
+	};
+  this.doSmooth = function(oldV, newV) {
+    var ret = oldV;
+    if (oldV > newV) {
+      ret -= this.DECAY_SMOOTHING * (oldV - newV);
+    } else {
+      ret += this.ATTACK_SMOOTHING * (newV - oldV);
+    }
+    //if (oldV < 0) ret = 0;
+    //if (oldV > 1.0) ret = 1.0;
+    return ret;
+  };
   this.resizer = function() {
     //this.log("resizer");
     // check if our canvas was risized
@@ -302,7 +415,7 @@ function meter(type) {
       this.height = this.canvas.height = this.canvas.clientHeight;
       this.log("canvas resized");
     }
-  }
+  };
   this.start = function(drawcanvas) {
     this.log("Meter.start");
 

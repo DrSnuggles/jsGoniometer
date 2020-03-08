@@ -11,7 +11,6 @@ onmessage = function(e) {
 	// let's calculate a short term loudness and psr value for each "pixel" of
 	// the canvas
 	for (var i = 0; i < width; i++){
-
 		// get the sample position in the buffer, that corresponds to this pixel
 		var absoluteSamplePos = Math.round(i/width * ebu_buffer.length);
 		// and get the short-term loudness for this position in LKFS
@@ -96,7 +95,6 @@ function getPSRAtSamplePosition(buffers, samplePos, loudness_value){
 			i++;
 		}
 	}
-
 	var x_peak = getAbsMaxOfArray(samples);
 	var x_peak_db = absoluteValueToDBFS(x_peak);
 	var psr = x_peak_db - loudness_value;

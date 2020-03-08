@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <title>Audio meters by DrSnuggles</title>
   <script src="audiotools.js"></script> <!-- needed -->
+  <script src="getSamplerate.js"></script> <!-- get Samplerate from given file NOT decoded Audio -->
   <script src="meter.js"></script>
   <script src="dnd.js"></script> <!-- drag n drop -->
   <link href="style.css" type="text/css" rel="stylesheet"/>
@@ -154,7 +155,8 @@
       meter_corr.color = [50, 200, 50, 1.0];
 
       meter_meter.bgColor = [17, 17, 68, 1.0]; // alpha = 1.0 -> no CRT
-      meter_meter.bgLines = [];
+      meter_meter.bgLines = ['dB'];
+      meter_meter.bgLineColor = [170, 50, 170, 1.0];
       meter_meter.color = [50, 200, 50, 1.0];
 
       // start
@@ -180,7 +182,6 @@
     function stop() {
       ATools.stopAudio();
     }
-
   </script>
 </body>
 </html>

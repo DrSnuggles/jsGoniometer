@@ -64,14 +64,15 @@ onmessage = function(e) {
 	for (var b = 0; b < numberOfGatingBlocks; b++){
 		gatingBlockLoudnesses[b] = getLoudnessOfGatingBlockMSes([
 			channelGatingBlockMS[0][b],
-			channelGatingBlockMS[1][b],
+			//channelGatingBlockMS[1][b]
 		]);
 
 		if (gatingBlockLoudnesses[b] > absoluteGatingThreshold){
 			gatingBlockMSesAboveAbsThreshold.push([
 				channelGatingBlockMS[0][b],
-				channelGatingBlockMS[1][b]
+				//channelGatingBlockMS[1][b]
 			]); //MS values for both channels for this block
+			// OPTIMIZE :)
 
 			//optimize!
 		}

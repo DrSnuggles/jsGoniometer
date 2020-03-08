@@ -4,15 +4,17 @@
 
 "use strict";
 
-var ATools = (function () {
+var ATools = (function (my) {
   //
   // Init
   //
   var my = {    // public available settings
-    ana: []     // Analyser Nodes
+    ana: [],     // Analyser Nodes
+    pos: 0
   },
   fft = 2048,   // fft Size
-  ctx = new AudioContext(), // Audio context
+  ctx, // Audio context
+  octx, // new try with another offline context
   source,   // SourceBufferNode
   splitter, // Splitter
   isLoading = false, // avoid multiple starts, still possible via DND ;)
@@ -24,7 +26,7 @@ var ATools = (function () {
   width = screen.width,   // waveform
   height = screen.height/2,// waveform
   wave,   // this is a save of generated waveform
-  halfRange = true, // if true only upper half (0.5..1.0) of waveform is displayed
+  halfRange = false, // if true only upper half (0.5..1.0) of waveform is displayed
   startOffset = 0, // where are we pos in audio
   startTime = 0,
   duration = 0,
@@ -44,8 +46,11 @@ var ATools = (function () {
   workerProgress = [0, 0, 0],
   waveType = 0, // DrS, Loudness, PSR
   data = [], // really needed????? does getChannelData take long????
+  dataTP = [],
+  dataFS = [],
+  fAna = {}, // file Analyser, looks like i need something like that
   // finally display console logs?
-  debug = true;
+  debug = false;
 
   //
   // Private
@@ -73,16 +78,17 @@ var ATools = (function () {
     // draw position
     if (source.buffer) {
       pos = source.context.currentTime - startTime + startOffset;
+      my.pos = Math.floor(pos * sampleRate);
       posF = ((pos) / duration);
       cctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       cctx.fillRect(0, 0, posF*width, height);
       // audio info (samplerate pos/len)
       if (pos > duration) pos = duration;
-      ainfo.innerHTML = formatTime(pos) +' / '+ formatTime(duration) +'<br/>'+ my.ana.length +'ch @'+source.buffer.sampleRate/1000 +'kHz';
+      ainfo.innerHTML = formatTime(pos) +' / '+ formatTime(duration) +'<br/>'+ my.ana.length +'ch @'+fAna.srate/1000 +'kHz -> '+source.buffer.sampleRate/1000 +'kHz';
     }
   };
   function formatTime(s) {
-    return new Date(1000 * s).toISOString().substr(11, 8) + (s % 1).toFixed(3).substr(1);
+    return new Date(1000 * s).toISOString().substr(11, 8) + (s % 1).toFixed(2).substr(1);
   };
   function loadConvolver() {
     var xhr = new XMLHttpRequest();
@@ -100,8 +106,11 @@ var ATools = (function () {
   function deepAnal(buf) {
     log("deepAnal");
 
+    // the resampled area
     channels = buf.numberOfChannels;
-    sampleRate = buf.sampleRate;
+    sampleRate = buf.sampleRate; // this is the already resampled rate !!!
+
+    // save resampled buffer per channel
     data = [];
     for (let i = 0; i < channels; i++) {
       data.push( buf.getChannelData(i) );
@@ -111,32 +120,103 @@ var ATools = (function () {
     readyWorkers = numWorkers = 0;
     calc_IL(buf);
     calc_loudness(buf);
-    calc_tpeak(buf);
+
+    // own offline context with original data not resampled
+    octx = new OfflineAudioContext(channels, duration * fAna.srate, fAna.srate);
+  	var source = octx.createBufferSource();
+  	source.buffer = buf;
+    source.connect(octx.destination);
+  	source.start();
+  	octx.startRendering().then(function(renderedBuffer) {
+  		log('OCTX Rendering completed successfully');
+      //log(renderedBuffer);
+      data = [];
+      dataFS = [];
+      for (let i = 0; i < channels; i++) {
+        data.push( renderedBuffer.getChannelData(i) );
+        dataFS.push([]);
+      }
+      //duration = data[0].length / srate;
+      //var millis = Math.ceil(duration * 1000);
+      var framesize = fAna.srate / 100; // 44100 / 100 = 441
+      //console.log(data[0].length, framesize, data[0].length/framesize);
+      var framecount = 0;
+      var framesum = new Array(channels).fill(0);
+
+      var res = []; // result array for the drawwave peak diagram
+      var peak;
+      var chPeaks = new Array(channels).fill(0);
+      var chMin = new Array(channels).fill(+Infinity);
+      var chMax = new Array(channels).fill(-Infinity);
+      //console.log(dataFS);
+      for (var i = 0; i < data[0].length; i++) {
+        peak = 0;
+        for (var j = 0; j < channels; j++) {
+          var val = Math.abs(data[j][i]);
+          framesum[j] += val;
+          if (val >= 1.0) chPeaks[j] += 1;
+          if (val < chMin[j]) chMin[j] = val;
+          if (val > chMax[j]) chMax[j] = val;
+          peak = Math.max(peak, val);
+        }
+        res.push( peak );
+        framecount++;
+        if (framecount > framesize) {
+          //console.log(framecount, i, framesum[0]/framesize, framesum[1]/framesize);
+          for (var j = 0; j < channels; j++) {
+            //console.log(j, framesum[j]/framesize);
+            dataFS[j].push(framesum[j]/framesize);
+            framesum[j] = 0;
+          }
+          framecount = 0;
+        }
+      }
+      //console.log(i, i/framesize);
+      for (var i = 0; i < channels; i++) {
+        console.info("Channel "+ i +" found Min="+ chMin[i] +" = "+ absoluteValueToDBFS(chMin[i]).toFixed(2) +"dB Max="+ chMax[i] + " = "+ absoluteValueToDBFS(chMax[i]).toFixed(2) +"dB #Peaks="+ chPeaks[i]);
+      }
+      // make wave data smaller
+      // give each pixel 2 datas
+      var group = Math.floor( res.length / width );
+      log("group width: "+ group);
+      var res2 = [];
+      for (let i = 0; i < width; i++) {
+        var maxi = 0;
+        for (let j = group*i; j < group*(i+1); j++) {
+          if (res[j] > maxi) maxi = res[j];
+        }
+        res2.push(maxi);
+      }
+      waveDrS = res2;
+      drawWave(res2);
+      playAudio(sbuf, 0);
+    });
+
+
+    // try peak first, we will need it
+    // worker are not effective since we want to wait to have all that values
+    // will resample up to max but 4x is not guaranteed
+    // and we have to do this for each channel
+
+    //calc_tpeak_local(); // since this oversamples to max 192000 it takes most time
+    //calc_tpeak(buf);
 
     // should also be a worker
     // since we are here more interested in finding peaks i decided to make one single waveform
     // with max of absolute values of all channels. never seen before :)
-    var res = []; // result array
-    var peak;
-    var chPeaks = new Array(channels).fill(0);
-    var chMin = new Array(channels).fill(+Infinity);
-    var chMax = new Array(channels).fill(-Infinity);
-    for (var i = 0; i < data[0].length; i++) {
-      peak = 0;
-      for (var j = 0; j < channels; j++) {
-        var val = Math.abs(data[j][i]);
-        if (val >= 1.0) chPeaks[j] += 1;
-        if (val < chMin[j]) chMin[j] = val;
-        if (val > chMax[j]) chMax[j] = val;
-        peak = Math.max(peak, val);
-      }
-      res.push( peak );
-    }
-    for (var i = 0; i < channels; i++) {
-      console.info("Channel "+ i +" found Min="+ chMin[i] +" Max="+ chMax[i] + " Peaks="+ chPeaks[i]);
-    }
-    waveDrS = res
-    drawWave(res);
+    // i have values here which are out of bounds / of spec
+    // https://stackoverflow.com/questions/51252732/javascript-getchanneldata-some-out-of-bounds
+    // not 100% sure but think this is caused by some 32bit float conversion ? also not sure what browsers are doing. clamp??
+    // i will keep them and get used to values up to +6dbFS
+    // https://stackoverflow.com/questions/58136614/how-to-get-channel-data-directly-from-arraybuffer-without-web-audio-api
+    // OK, getChannelData respectively decodeAudio provides me with already resampled data (depends on my Win settings)
+    // thats not exactely what i wanted....
+    // all sample rate conversion is then not ideal since it doubles resampleing and failures
+    // shows how to fetch just a range of data: https://stackoverflow.com/questions/33428990/determining-the-sample-rate-of-a-large-audio-file-in-javascript
+    // https://github.com/WebAudio/web-audio-api/issues/30
+    // YES YES YES.. i have filesize, channels and duration -> samplerate for WAVs only
+    // for MP3, FLAC, OGG maybe i will find in TAGs
+
 
   };
   function calc_IL(buf) {
@@ -209,7 +289,7 @@ var ATools = (function () {
   		}
   	});
 
-  };
+  }; // worker version
   function calc_loudness(buf) {
     	//do not resample
     	var targetSampleRate = sampleRate;
@@ -310,6 +390,7 @@ var ATools = (function () {
     				log('Message received from loudness worker');
     				loudness = data.loudness;
     				psr = data.psr;
+            //console.log(psr);
     				//drawLoudnessDiagram(loudness);
     				//drawPSRDiagram(psr);
             readyWorkers++;
@@ -320,7 +401,7 @@ var ATools = (function () {
     			}
     		};
     	});
-  };
+  }; // worker version
   function calc_tpeak(buf) {
   	//True-peak context
   	//oversample to 192000 Hz
@@ -367,52 +448,65 @@ var ATools = (function () {
   			}
   		};
   	});
+  }; // worker version
+  function calc_tpeak_local() {
+    //True-peak context
+    //oversample to 192000 Hz
+    //^^ thats max but 4x is not guaranteed
+    var targetSampleRate = sampleRate;// 192000;
+    var OAC_TP = new OfflineAudioContext(channels, duration * targetSampleRate, targetSampleRate);
+    var source = OAC_TP.createBufferSource();
+    source.buffer = sbuf;
+    source.start();
+
+    var gain = OAC_TP.createGain();
+    gain.gain.value = 0.5;
+
+    var lp_filter = OAC_TP.createBiquadFilter()
+    lp_filter.type = "lowpass";
+    lp_filter.frequency.value = 20000;
+
+    source.connect(gain).connect(lp_filter).connect(OAC_TP.destination);
+
+    OAC_TP.startRendering().then(function(renderedBuffer) {
+      log('OAC_TP rendering completed successfully');
+      var data_tp = [];
+      for (let c = 0; c < channels; c++) {
+        data_tp.push( renderedBuffer.getChannelData(c) );
+      }
+
+      var restoreGain = 20 * Math.log10(1/0.5); // compensate Gain = 50% with ~+6dB
+      dataTP = []; // output
+      // let's calculate a true peak value for each channel !!
+      for (var c = 0; c < channels; c++) {
+        log("Start analysing channel "+ c);
+        dataTP.push( [] );
+        // and for each sample
+        for (var i = 0; i < data_tp[0].length; i++) {
+          var value_db = absoluteValueToDBFS(Math.abs(data_tp[c][i])) + restoreGain; //restore original gain
+          dataTP[c][i] = value_db;
+          if (isNaN(value_db)) {
+            log("Sample "+ i +" channel "+ c + " = "+ value_db + " data: "+ data[c][i] + " DBFS "+ absoluteValueToDBFS(data[c][i]));
+          } else {
+            if (i % (10*sampleRate) == 0)
+              log("Channel "+ c +" Progress "+ (i/data_tp[0].length*100).toFixed(3) +"%");
+          }
+        }
+
+      }
+      log("Calc finished");
+      //log(dataTP);
+      //playAudio(sbuf, 0);
+    });
   };
-  function drawLoudnessDiagram(loudness) {
-    cctx.clearRect(0, 0, width, height);
-  	//calculate RMS for every pixel
-    cctx.lineWidth = 1;
-    cctx.strokeStyle = 'rgba(255, 255, 255, 1.0)';
-
-  	for (var i = 0; i < width; i++){
-  		cctx.beginPath();
-
-  		//typical crest factors are -20 to -3 dbFS
-  		var lineHeight = height * ((loudness[i] + 30) / 30);
-
-  		cctx.moveTo(i, height);
-  		cctx.lineTo(i, height - lineHeight);
-  		cctx.stroke();
-  	}
-
-    // now save this for later reuse
-    wave = cctx.getImageData(0, 0, width, height);
-
-  };
-  function drawPSRDiagram(loudness) {
-    cctx.clearRect(0, 0, width, height);
-  	//calculate RMS for every pixel
-  	for (var i = 0; i < width; i++){
-  		cctx.beginPath();
-  		cctx.lineWidth = 1;
-  		var psr_value = loudness[i];
-  		cctx.strokeStyle = getPSRColor(psr_value);
-
-  		//typical values in pop music are 20 to 3 LU
-  		var lineHeight = height * ((psr_value - 2) / 17);
-
-  		cctx.moveTo(i, height);
-  		cctx.lineTo(i, height - lineHeight);
-  		cctx.stroke();
-  	}
-
-    // now save this for later reuse
-    wave = cctx.getImageData(0, 0, width, height);
-
-  };
+  function absoluteValueToDBFS(value){
+    var ret = 20 * Math.log10(value);
+    ret = Math.max(ret, -180);
+  	return ret;
+  }
   function drawWave(buf) {
     log("drawWave");
-
+    //screen.availWidth * 2;
     // now draw them all, quite too much... i know
     // to have better resolution in peak are i dismiss lower half of val range
     cctx.lineWidth = 1;
@@ -430,11 +524,53 @@ var ATools = (function () {
     cctx.stroke();
 
     // now save this for later reuse
+    waveType = 0;
     wave = cctx.getImageData(0, 0, width, height);
   };
-  my.drawLoudnessDiagram = drawLoudnessDiagram; // needed in RMB event
-  my.drawPSRDiagram = drawPSRDiagram; // needed in RMB event
-  my.drawWave = drawWave; // needed in RMB event
+  function drawLoudnessDiagram(vals) {
+    cctx.clearRect(0, 0, width, height);
+  	//calculate RMS for every pixel
+    cctx.lineWidth = 1;
+    cctx.strokeStyle = 'rgba(255, 255, 255, 1.0)';
+
+  	for (var i = 0; i < width; i++){
+  		cctx.beginPath();
+
+  		//typical crest factors are -20 to -3 dbFS
+  		var lineHeight = height * ((vals[i] + 30) / 30);
+
+  		cctx.moveTo(i, height);
+  		cctx.lineTo(i, height - lineHeight);
+  		cctx.stroke();
+  	}
+
+    // now save this for later reuse
+    waveType = 1;
+    wave = cctx.getImageData(0, 0, width, height);
+
+  };
+  function drawPSRDiagram(vals) {
+    cctx.clearRect(0, 0, width, height);
+  	//calculate RMS for every pixel
+  	for (var i = 0; i < width; i++){
+  		cctx.beginPath();
+  		cctx.lineWidth = 1;
+  		var psr_value = vals[i];
+  		cctx.strokeStyle = getPSRColor(psr_value);
+
+  		//typical values in pop music are 20 to 3 LU
+  		var lineHeight = height * ((psr_value - 2) / 17);
+
+  		cctx.moveTo(i, height);
+  		cctx.lineTo(i, height - lineHeight);
+  		cctx.stroke();
+  	}
+
+    // now save this for later reuse
+    waveType = 2;
+    wave = cctx.getImageData(0, 0, width, height);
+
+  };
   function getPSRColor(psr_value) {
 		var color;
 
@@ -477,12 +613,21 @@ var ATools = (function () {
   function getPSR() {
   	return Math.round(10 * psr[Math.round(posF * psr.length)]) / 10;
   };
-  function getDBTP() {
-    if (typeof tpeak == "undefined" || posF >= 1) return -200;
-    return Math.round(10 * tpeak[Math.round(posF * tpeak.length)]) / 10;
+  function getDBTP(c) {
+    //if (typeof tpeak == "undefined" || posF >= 1) return -200;
+    //return Math.round(10 * tpeak[Math.round(posF * tpeak.length)]) / 10; // old method via worker
+    if (dataTP.length === 0) return -120;
+    var x = Math.floor(dataTP[0].length/data[0].length * pos * sampleRate) - 1;
+    return dataTP[c][x];
   };
-  my.getDBTP = getDBTP;
-  function jumpTo(e) {
+  function getDBFS(c) {
+    // idea is to have a db value for each 1/100 second
+    var x = Math.floor(pos * 100) - 1;
+    if (dataFS.length === 0 || typeof dataFS[c] == "undefined" ) return 1/1000000000; // -180db
+    //console.log(dataFS[c][x], typeof dataFS[c][x]);
+    return dataFS[c][x];
+  };
+  function jumpTo(e) { // LMB on waveform
     pos = Math.floor(e.offsetX / canvas.clientWidth * duration);
     try {
       my.stopAudio();
@@ -491,7 +636,7 @@ var ATools = (function () {
     }
     // have to reinit audio
     splitAudio(sbuf, pos);
-  }; // LMB on waveform
+  };
   function changeWaveType(e) { // RMB on waveform
     e.preventDefault();
     waveType = (waveType+1) % 3;
@@ -509,13 +654,15 @@ var ATools = (function () {
     }
   };
   function splitAudio(buf, pos) {
-    log("Loaded audio has "+ buf.numberOfChannels +" channels @"+ buf.sampleRate/1000.0 +"kHz");
+    log("Loaded audio will be played back with "+ buf.numberOfChannels +" channels @"+ buf.sampleRate/1000.0 +"kHz");
     log("Destination supports up to "+ ctx.destination.maxChannelCount +" channels");
 
+    var jumped = true;
     if (sbuf !== buf) {
       log("Buffer changed");
       sbuf = buf;
       deepAnal(buf);
+      jumped = false;
     }
 
     // Routing: Source --> Splitter --> Analyser
@@ -538,7 +685,7 @@ var ATools = (function () {
     }
 
     source.connect(ctx.destination); // we also want to hear audio
-    playAudio(buf, pos);
+    if (jumped) playAudio(buf, pos);
   };
   function playAudio(buf, pos) {
     source.buffer = buf;
@@ -549,10 +696,28 @@ var ATools = (function () {
     log("Audio playback started");
     isLoading = false; // as late as possible
   };
+  /*
+  function swap16(val) {
+    return ((val & 0xFF) << 8)
+           | ((val >> 8) & 0xFF);
+  };
+  function swap32(val) {
+    return ((val & 0xFF) << 24)
+           | ((val & 0xFF00) << 8)
+           | ((val >> 8) & 0xFF00)
+           | ((val >> 24) & 0xFF);
+  };
+  */
 
   //
   // Public
   //
+  my.absoluteValueToDBFS = absoluteValueToDBFS;
+  my.drawLoudnessDiagram = drawLoudnessDiagram; // needed in RMB event
+  my.drawPSRDiagram = drawPSRDiagram; // needed in RMB event
+  my.drawWave = drawWave; // needed in RMB event
+  my.getDBTP = getDBTP;
+  my.getDBFS = getDBFS;
   my.log = log;
   my.loadAudio = function(url) {
     log("loadAudio: "+ url);
@@ -588,12 +753,18 @@ var ATools = (function () {
   my.decodeAudio = function(buf) {
     log("decodeAudio");
     my.stopAudio();
+
+    // have plain file reader buffer and will try to identify
+    fAna = ATools.getSamplerate(buf);
+    log("Found "+ fAna.fType +" with "+ fAna.numChannels +" Channels @ "+ (fAna.srate/1000).toFixed(1)+"kHz with "+ fAna.bitsPerSample + " bits and bitrate of "+ fAna.bitrate);
+
     ctx.decodeAudioData(buf, function(buf) {
       splitAudio(buf, 0); // start from beginning
     }, function(e){
       //console.error(e);
       log("Unable to decode audio");
     });
+
   };
   my.stopAudio = function() {
     if (!source) return; // nothing to stop
@@ -621,6 +792,7 @@ var ATools = (function () {
     log("FFT size set to: "+ fft);
   };
   my.init = function() {
+    ctx = new AudioContext(); // even that is not late enough
     loadConvolver();
 
     canvas = waveform;
@@ -637,4 +809,4 @@ var ATools = (function () {
   // Exit
   //
   return my;
-})();
+}(ATools || {}));
